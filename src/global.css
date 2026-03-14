@@ -1,9 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  --font-display:
-    Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
-    Segoe UI Symbol, Noto Color Emoji;
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
-  --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
-  --font-serif: Georgia, 'Times New Roman', serif;
+  --radius: 16px;
+
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --card: 222 47% 18%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222 47% 18%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 142 71% 45%;
+  --primary-foreground: 222 47% 11%;
+  --secondary: 215 20% 53%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 215 20% 65%;
+  --muted-foreground: 214 32% 85%;
+  --accent: 197 80% 57%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 215 25% 27%;
+  --input: 215 25% 27%;
+  --ring: 142 71% 45%;
+  --glow: 82 85% 50%;
+  --warning: 48 96% 53%;
+
+  --sidebar-background: 222 47% 11%;
+  --sidebar-foreground: 210 40% 98%;
+  --sidebar-primary: 142 71% 45%;
+  --sidebar-primary-foreground: 222 47% 11%;
+  --sidebar-accent: 197 80% 57%;
+  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-border: 215 25% 27%;
+  --sidebar-ring: 142 71% 45%;
 }
