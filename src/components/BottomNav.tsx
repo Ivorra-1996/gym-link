@@ -1,4 +1,4 @@
-import { usePathname, useRouter } from "expo-router";
+import { Href, usePathname, useRouter } from "expo-router";
 import { Dumbbell, Home, Search, User } from "lucide-react-native";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -10,10 +10,10 @@ import {
 } from "../constants/tailwind-runtime-theme";
 
 const tabs = [
-  { icon: Home, label: "Inicio", path: "/" },
-  { icon: Dumbbell, label: "Entrenar", path: "/train" },
-  { icon: Search, label: "Descubrir", path: "/discover" },
-  { icon: User, label: "Perfil", path: "/profile" },
+  { icon: Home, label: "Inicio", path: "/" as Href },
+  { icon: Dumbbell, label: "Entrenar", path: "/train" as Href },
+  { icon: Search, label: "Descubrir", path: "/discover" as Href },
+  { icon: User, label: "Perfil", path: "/profile" as Href },
 ];
 
 const BottomNav = () => {
