@@ -6,7 +6,12 @@ import Animated, {
     useSharedValue,
     withTiming,
 } from "react-native-reanimated";
-import { twColors, twRadius } from "../constants/tailwind-runtime-theme";
+import {
+    borderWidth,
+    twColors,
+    twFonts,
+    twRadius,
+} from "../constants/tailwind-runtime-theme";
 
 interface HydrationTrackerProps {
   glasses: number;
@@ -64,9 +69,9 @@ const HydrationTracker = ({ glasses, goal, onAdd }: HydrationTrackerProps) => {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: twColors.background,
-    borderWidth: 1,
+    borderWidth: borderWidth.default,
     borderColor: twColors.border,
-    borderRadius: twRadius.md + 2,
+    borderRadius: twRadius.sm,
     padding: 14,
   },
   headerRow: {
@@ -82,12 +87,13 @@ const styles = StyleSheet.create({
   },
   title: {
     color: twColors.foreground,
-    fontWeight: "700",
+    fontFamily: twFonts.bold,
     fontSize: 14,
   },
   counter: {
     color: twColors.muted,
     fontSize: 12,
+    fontFamily: twFonts.regular,
   },
   progressTrack: {
     height: 8,

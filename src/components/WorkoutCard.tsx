@@ -5,7 +5,12 @@ import Animated, {
     useSharedValue,
     withSpring,
 } from "react-native-reanimated";
-import { twColors, twRadius } from "../constants/tailwind-runtime-theme";
+import {
+    borderWidth,
+    twColors,
+    twFonts,
+    twRadius,
+} from "../constants/tailwind-runtime-theme";
 
 interface WorkoutCardProps {
   title: string;
@@ -67,9 +72,9 @@ const WorkoutCard = ({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: twColors.background,
-    borderWidth: 1,
+    borderWidth: borderWidth.default,
     borderColor: twColors.border,
-    borderRadius: twRadius.md + 2,
+    borderRadius: twRadius.sm,
     padding: 14,
   },
   row: {
@@ -84,14 +89,14 @@ const styles = StyleSheet.create({
   muscleGroup: {
     color: twColors.primary,
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: twFonts.bold,
     textTransform: "uppercase",
     marginBottom: 4,
   },
   title: {
     color: twColors.foreground,
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: twFonts.bold,
     marginBottom: 8,
   },
   metaRow: {
@@ -108,6 +113,7 @@ const styles = StyleSheet.create({
   metaText: {
     color: twColors.muted,
     fontSize: 12,
+    fontFamily: twFonts.regular,
   },
   chevronCircle: {
     width: 40,

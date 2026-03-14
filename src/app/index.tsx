@@ -2,11 +2,23 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Image } from "expo-image";
 import { Bell, Flame, TrendingUp, Trophy, Zap } from "lucide-react-native";
-import { useState } from "react";
-import Animated, { FadeInUp } from "react-native-reanimated";
+import { useEffect, useState } from "react";
+import Animated, {
+    Easing,
+    FadeInUp,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withTiming,
+} from "react-native-reanimated";
 import HydrationTracker from "../components/HydrationTracker";
 import WorkoutCard from "../components/WorkoutCard";
-import { twColors, twRadius } from "../constants/tailwind-runtime-theme";
+import {
+    borderWidth,
+    twColors,
+    twFonts,
+    twRadius,
+} from "../constants/tailwind-runtime-theme";
 
 const stats = [
   {
@@ -43,6 +55,24 @@ const todayWorkouts = [
 
 const Index = () => {
   const [glasses, setGlasses] = useState(5);
+  const [quickHovered, setQuickHovered] = useState(false);
+  const pulse = useSharedValue(0);
+
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withTiming(1, {
+        duration: 2000,
+        easing: Easing.inOut(Easing.ease),
+      }),
+      -1,
+      true,
+    );
+  }, [pulse]);
+
+  const quickActionPulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + pulse.value * 0.015 }],
+    opacity: 0.95 + pulse.value * 0.05,
+  }));
 
   return (
     <View style={styles.screen}>
@@ -83,8 +113,18 @@ const Index = () => {
             ))}
           </Animated.View>
 
-          <Animated.View entering={FadeInUp.delay(100)}>
-            <Pressable style={styles.quickActionCard}>
+          <Animated.View
+            entering={FadeInUp.delay(100)}
+            style={quickActionPulseStyle}
+          >
+            <Pressable
+              style={[
+                styles.quickActionCard,
+                quickHovered && styles.quickActionCardHovered,
+              ]}
+              onHoverIn={() => setQuickHovered(true)}
+              onHoverOut={() => setQuickHovered(false)}
+            >
               <View style={styles.quickActionIconCircle}>
                 <Zap size={20} color={twColors.background} />
               </View>
@@ -161,12 +201,13 @@ const styles = StyleSheet.create({
   heroSubtitle: {
     color: twColors.muted,
     fontSize: 14,
+    fontFamily: twFonts.regular,
     marginBottom: 4,
   },
   heroTitle: {
     color: twColors.foreground,
     fontSize: 24,
-    fontWeight: "700",
+    fontFamily: twFonts.bold,
   },
   bellButton: {
     width: 40,
@@ -200,9 +241,9 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: twColors.background,
-    borderWidth: 1,
+    borderWidth: borderWidth.default,
     borderColor: twColors.border,
-    borderRadius: twRadius.md + 2,
+    borderRadius: twRadius.sm,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 12,
@@ -210,21 +251,22 @@ const styles = StyleSheet.create({
   },
   statValue: {
     color: twColors.foreground,
-    fontWeight: "700",
+    fontFamily: twFonts.bold,
     fontSize: 16,
     marginTop: 4,
   },
   statLabel: {
     color: twColors.muted,
     fontSize: 10,
+    fontFamily: twFonts.regular,
     marginTop: 2,
   },
   quickActionCard: {
     backgroundColor: twColors.background,
-    borderWidth: 1,
-    borderColor: twColors.border,
-    borderRadius: twRadius.md + 2,
-    padding: 14,
+    borderWidth: borderWidth.default,
+    borderColor: "transparent",
+    borderRadius: twRadius.sm,
+    padding: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
@@ -233,6 +275,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 16,
     elevation: 4,
+  },
+  quickActionCardHovered: {
+    borderColor: twColors.primary,
   },
   quickActionIconCircle: {
     width: 40,
@@ -248,17 +293,18 @@ const styles = StyleSheet.create({
   quickActionTitle: {
     color: twColors.foreground,
     fontSize: 14,
-    fontWeight: "700",
+    fontFamily: twFonts.bold,
   },
   quickActionSubtitle: {
     color: twColors.muted,
     fontSize: 12,
+    fontFamily: twFonts.regular,
     marginTop: 2,
   },
   sectionTitle: {
     color: twColors.foreground,
     fontSize: 14,
-    fontWeight: "700",
+    fontFamily: twFonts.bold,
     marginBottom: 10,
   },
   workoutList: {
