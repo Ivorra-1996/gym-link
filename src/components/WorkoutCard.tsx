@@ -1,18 +1,20 @@
+import { Href, router } from "expo-router";
 import { ChevronRight, Clock, Flame } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
 } from "react-native-reanimated";
 import {
-    borderWidth,
-    twColors,
-    twFonts,
-    twRadius,
+  borderWidth,
+  twColors,
+  twFonts,
+  twRadius,
 } from "../constants/tailwind-runtime-theme";
 
 interface WorkoutCardProps {
+  id: string;
   title: string;
   muscleGroup: string;
   duration: string;
@@ -23,6 +25,7 @@ interface WorkoutCardProps {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const WorkoutCard = ({
+  id,
   title,
   muscleGroup,
   duration,
@@ -40,6 +43,11 @@ const WorkoutCard = ({
       onPressIn={() => (scale.value = withSpring(0.985))}
       onPressOut={() => (scale.value = withSpring(1))}
       style={[styles.card, animatedStyle]}
+      onPress={() => {
+        // Aquí puedes manejar la navegación a la pantalla de detalles del entrenamiento usando el id
+        // Por ejemplo: router.push(`/routines/${id}`)
+        router.push(`/routine/${id}` as Href);
+      }}
     >
       <View style={styles.row}>
         <View style={styles.content}>

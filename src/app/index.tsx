@@ -4,20 +4,20 @@ import { Image } from "expo-image";
 import { Bell, Flame, TrendingUp, Trophy, Zap } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import Animated, {
-    Easing,
-    FadeInUp,
-    useAnimatedStyle,
-    useSharedValue,
-    withRepeat,
-    withTiming,
+  Easing,
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
 } from "react-native-reanimated";
 import HydrationTracker from "../components/HydrationTracker";
 import WorkoutCard from "../components/WorkoutCard";
 import {
-    borderWidth,
-    twColors,
-    twFonts,
-    twRadius,
+  borderWidth,
+  twColors,
+  twFonts,
+  twRadius,
 } from "../constants/tailwind-runtime-theme";
 
 const stats = [
@@ -38,6 +38,7 @@ const stats = [
 
 const todayWorkouts = [
   {
+    id: "1",
     title: "Push Day",
     muscleGroup: "Pecho & Tríceps",
     duration: "55 min",
@@ -45,6 +46,7 @@ const todayWorkouts = [
     exercises: 6,
   },
   {
+    id: "2",
     title: "Core Blast",
     muscleGroup: "Abdominales",
     duration: "20 min",

@@ -1,19 +1,19 @@
 import {
-    Award,
-    Calendar,
-    ChevronRight,
-    Dumbbell,
-    Settings,
-    TrendingUp,
+  Award,
+  Calendar,
+  ChevronRight,
+  Dumbbell,
+  Settings,
+  TrendingUp,
 } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import {
-    borderWidth,
-    twColors,
-    twFonts,
-    twRadius,
+  borderWidth,
+  twColors,
+  twFonts,
+  twRadius,
 } from "../constants/tailwind-runtime-theme";
 
 const achievements = [
@@ -236,7 +236,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   achievementsRow: {
-    gap: 10,
+    width: "100%",
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-evenly",
+    alignItems: "center",
+    gap: 12,
     paddingRight: 4,
   },
   achievementCard: {

@@ -3,14 +3,15 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import WorkoutCard from "../components/WorkoutCard";
 import {
-    borderWidth,
-    twColors,
-    twFonts,
-    twRadius,
+  borderWidth,
+  twColors,
+  twFonts,
+  twRadius,
 } from "../constants/tailwind-runtime-theme";
 
 const routines = [
   {
+    id: "1",
     title: "Push Day",
     muscleGroup: "Pecho & Tríceps",
     duration: "55 min",
@@ -18,6 +19,7 @@ const routines = [
     exercises: 6,
   },
   {
+    id: "2",
     title: "Pull Day",
     muscleGroup: "Espalda & Bíceps",
     duration: "50 min",
@@ -25,6 +27,7 @@ const routines = [
     exercises: 7,
   },
   {
+    id: "3",
     title: "Leg Day",
     muscleGroup: "Piernas & Glúteos",
     duration: "60 min",
@@ -32,6 +35,7 @@ const routines = [
     exercises: 5,
   },
   {
+    id: "4",
     title: "Core Blast",
     muscleGroup: "Abdominales",
     duration: "20 min",
@@ -39,6 +43,7 @@ const routines = [
     exercises: 4,
   },
   {
+    id: "5",
     title: "Upper Power",
     muscleGroup: "Tren Superior",
     duration: "45 min",
