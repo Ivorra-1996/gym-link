@@ -1,3 +1,4 @@
+import { Image } from "expo-image";
 import { Link, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
@@ -23,7 +24,7 @@ interface Routine {
   name: string;
   description: string;
   exercises: Exercise[];
-  difficulty: "beginner" | "intermediate" | "advanced";
+  difficulty: "principiante" | "intermedia" | "avanzado";
 }
 
 export default function RoutinePage() {
@@ -38,9 +39,15 @@ export default function RoutinePage() {
       id: routineId,
       name: "Rutina de Pecho y Tríceps",
       description: "Rutina enfocada en desarrollo de pecho y tríceps",
-      difficulty: "intermediate",
+      difficulty: "intermedia",
       exercises: [
-        { id: "1", name: "Press de Banca", sets: 4, reps: 8, weight: "80kg" },
+        {
+          id: "1",
+          name: "Press de Banca",
+          sets: 4,
+          reps: 8,
+          weight: "80kg",
+        },
         {
           id: "2",
           name: "Flexiones",
@@ -48,7 +55,27 @@ export default function RoutinePage() {
           reps: 12,
           weight: "Peso corporal",
         },
-        { id: "3", name: "Fondos", sets: 3, reps: 10, weight: "Peso corporal" },
+        {
+          id: "3",
+          name: "Fondos",
+          sets: 3,
+          reps: 10,
+          weight: "Peso corporal",
+        },
+        {
+          id: "4",
+          name: "Press de Tríceps",
+          sets: 4,
+          reps: 10,
+          weight: "40kg",
+        },
+        {
+          id: "5",
+          name: "Extensiones de Tríceps",
+          sets: 3,
+          reps: 12,
+          weight: "30kg",
+        },
       ],
     };
     setRoutine(mockRoutine);
@@ -81,36 +108,58 @@ export default function RoutinePage() {
           </Link>
 
           <Text style={styles.title}>{routine.name}</Text>
-          <Text style={styles.description}>{routine.description}</Text>
-          <Text style={styles.difficultyBadge}>{routine.difficulty}</Text>
+          {/* <Text style={styles.description}>{routine.description}</Text>
+          <Text style={styles.difficultyBadge}>{routine.difficulty}</Text> */}
 
-          <View style={styles.exerciseList}>
-            <Text style={styles.exerciseListTitle}>Ejercicios</Text>
-            {routine.exercises.map((exercise) => (
-              <View key={exercise.id} style={styles.exerciseCard}>
-                <Text style={styles.exerciseName}>{exercise.name}</Text>
-                <View style={styles.exerciseMetaRow}>
-                  <View style={styles.exerciseMetaItem}>
-                    <Text style={styles.exerciseMetaLabel}>Series</Text>
-                    <Text style={styles.exerciseMetaValue}>
-                      {exercise.sets}
-                    </Text>
+          <View>
+            <Text style={styles.exerciseListTitle}>
+              Ejercicios
+              <Text style={styles.exerciseCant}>
+                <Text> </Text>({routine.exercises.length})
+              </Text>
+            </Text>
+            <View style={styles.exerciseList}>
+              {routine.exercises.map((exercise) => (
+                <View key={exercise.id} style={styles.exerciseCard}>
+                  <Text style={styles.exerciseName}>{exercise.name}</Text>
+                  <View style={styles.exerciseMetaRow}>
+                    <View style={styles.exerciseMetaColum}>
+                      <View style={styles.exerciseMetaItem}>
+                        <Text style={styles.exerciseMetaLabel}>Series</Text>
+                        <Text style={styles.exerciseMetaValue}>
+                          {exercise.sets}
+                        </Text>
+                      </View>
+                      <View style={styles.exerciseMetaItem}>
+                        <Text style={styles.exerciseMetaLabel}>
+                          Repeticiones
+                        </Text>
+                        <Text style={styles.exerciseMetaValue}>
+                          {exercise.reps}
+                        </Text>
+                      </View>
+                      <View style={styles.exerciseMetaItem}>
+                        <Text style={styles.exerciseMetaLabel}>Peso</Text>
+                        <Text style={styles.exerciseMetaValue}>
+                          {exercise.weight}
+                        </Text>
+                      </View>
+                    </View>
+                    <Image
+                      style={styles.image}
+                      source={require("@/assets/images/biceps/Cable-Curl-m_Upper-Arms_360.gif")}
+                    />
                   </View>
-                  <View style={styles.exerciseMetaItem}>
-                    <Text style={styles.exerciseMetaLabel}>Repeticiones</Text>
-                    <Text style={styles.exerciseMetaValue}>
-                      {exercise.reps}
-                    </Text>
-                  </View>
-                  <View style={styles.exerciseMetaItem}>
-                    <Text style={styles.exerciseMetaLabel}>Peso</Text>
-                    <Text style={styles.exerciseMetaValue}>
-                      {exercise.weight}
-                    </Text>
-                  </View>
+                  <Text style={styles.exerciseMetaLabelDescription}>
+                    Manténgase erguido con los codos cerca del torso y la parte
+                    superior de los brazos estacionarios; sólo los antebrazos
+                    deben moverse. Controla el peso, especialmente en el
+                    descenso, y coordina la respiración (exhala mientras haces
+                    curling, inhala mientras bajas).
+                  </Text>
                 </View>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -131,7 +180,6 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   content: {
-    width: "100%",
     maxWidth: 512,
     paddingHorizontal: 20,
     paddingTop: 56,
@@ -177,10 +225,17 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   exerciseList: {
-    gap: 12,
+    width: "100%",
+    gap: 16,
   },
   exerciseListTitle: {
     fontSize: 22,
+    fontFamily: twFonts.bold,
+    color: twColors.foreground,
+    marginBottom: 8,
+  },
+  exerciseCant: {
+    fontSize: 16,
     fontFamily: twFonts.bold,
     color: twColors.foreground,
     marginBottom: 8,
@@ -194,25 +249,49 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   exerciseName: {
-    fontSize: 18,
+    fontSize: 14,
     fontFamily: twFonts.bold,
-    color: twColors.foreground,
+    color: twColors.primary,
+    textTransform: "uppercase",
+  },
+  image: {
+    width: 200,
+    height: 200,
+    borderRadius: twRadius.sm,
+  },
+  exerciseMetaColum: {
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    justifyContent: "center",
   },
   exerciseMetaRow: {
+    width: "100%",
+    display: "flex",
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    gap: 12,
   },
   exerciseMetaItem: {
     flex: 1,
+    display: "flex",
+    alignItems: "flex-start",
+    flexDirection: "column",
+    justifyContent: "flex-start",
   },
   exerciseMetaLabel: {
     fontSize: 12,
     fontFamily: twFonts.regular,
     color: twColors.muted,
   },
+  exerciseMetaLabelDescription: {
+    fontSize: 12,
+    fontFamily: twFonts.regular,
+    color: twColors.muted,
+  },
   exerciseMetaValue: {
-    fontSize: 14,
+    fontSize: 28,
     fontFamily: twFonts.medium,
     color: twColors.foreground,
     marginTop: 2,
