@@ -1,11 +1,8 @@
 import { Href, router } from "expo-router";
 import { ChevronRight, Clock, Flame } from "lucide-react-native";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
 import {
   borderWidth,
   twColors,
@@ -33,19 +30,19 @@ const WorkoutCard = ({
   exercises,
 }: WorkoutCardProps) => {
   const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   return (
     <AnimatedPressable
+      style={[
+        styles.card,
+        hoveredItem === title && styles.quickActionCardHovered,
+      ]}
+      onHoverIn={() => setHoveredItem(title)}
+      onHoverOut={() => setHoveredItem(null)}
       onPressIn={() => (scale.value = withSpring(0.985))}
       onPressOut={() => (scale.value = withSpring(1))}
-      style={[styles.card, animatedStyle]}
       onPress={() => {
-        // Aquí puedes manejar la navegación a la pantalla de detalles del entrenamiento usando el id
-        // Por ejemplo: router.push(`/routines/${id}`)
         router.push(`/routine/${id}` as Href);
       }}
     >
@@ -83,7 +80,10 @@ const styles = StyleSheet.create({
     borderWidth: borderWidth.default,
     borderColor: twColors.border,
     borderRadius: twRadius.sm,
-    padding: 14,
+    padding: 16,
+  },
+  quickActionCardHovered: {
+    borderColor: twColors.primary,
   },
   row: {
     flexDirection: "row",

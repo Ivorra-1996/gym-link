@@ -4,9 +4,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import UserCard from "../components/UserCard";
 import {
-    borderWidth,
-    twColors,
-    twFonts
+  borderWidth,
+  twColors,
+  twFonts,
 } from "../constants/tailwind-runtime-theme";
 
 const users = [

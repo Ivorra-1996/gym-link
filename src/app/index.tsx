@@ -45,14 +45,14 @@ const todayWorkouts = [
     calories: "420 kcal",
     exercises: 6,
   },
-  {
-    id: "2",
-    title: "Core Blast",
-    muscleGroup: "Abdominales",
-    duration: "20 min",
-    calories: "180 kcal",
-    exercises: 4,
-  },
+  // {
+  //   id: "2",
+  //   title: "Core Blast",
+  //   muscleGroup: "Abdominales",
+  //   duration: "20 min",
+  //   calories: "180 kcal",
+  //   exercises: 4,
+  // },
 ];
 
 const Index = () => {
@@ -146,6 +146,7 @@ const Index = () => {
               glasses={glasses}
               goal={8}
               onAdd={() => setGlasses((g) => Math.min(g + 1, 8))}
+              onRemove={() => setGlasses((g) => Math.max(g - 1, 0))}
             />
           </Animated.View>
 

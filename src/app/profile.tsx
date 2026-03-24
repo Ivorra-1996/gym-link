@@ -1,10 +1,13 @@
 import {
-  Award,
   Calendar,
   ChevronRight,
   Dumbbell,
+  Flame,
   Settings,
   TrendingUp,
+  Trophy,
+  User,
+  Zap,
 } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -17,10 +20,10 @@ import {
 } from "../constants/tailwind-runtime-theme";
 
 const achievements = [
-  { icon: "🔥", label: "Racha 12 días" },
-  { icon: "🏆", label: "100 entrenos" },
-  { icon: "💪", label: "PR Sentadilla" },
-  { icon: "🎯", label: "Meta mensual" },
+  { icon: Flame, label: "Racha 12 días" },
+  { icon: Trophy, label: "100 entrenos" },
+  { icon: Zap, label: "PR Sentadilla" },
+  { icon: Calendar, label: "Meta mensual" },
 ];
 
 const stats = [
@@ -33,7 +36,8 @@ const menuItems = [
   { icon: Dumbbell, label: "Mis Rutinas", count: "5" },
   { icon: TrendingUp, label: "Estadísticas", count: "" },
   { icon: Calendar, label: "Historial", count: "48" },
-  { icon: Award, label: "Logros", count: "12" },
+  // { icon: Award, label: "Logros", count: "12" },
+  // { icon: UploadCloud, label: "Progreso", count: "" },
 ];
 
 const Profile = () => {
@@ -62,7 +66,9 @@ const Profile = () => {
           >
             <View style={styles.profileTop}>
               <View style={styles.avatarCircle}>
-                <Text style={styles.avatarEmoji}>🏋️</Text>
+                <Text style={styles.avatarEmoji}>
+                  <User size={24} color={twColors.primary} />
+                </Text>
               </View>
               <View>
                 <Text style={styles.profileName}>Jose Ivorra</Text>
@@ -84,7 +90,12 @@ const Profile = () => {
 
           {/* Logros */}
           <Animated.View entering={FadeInUp.delay(120)}>
-            <Text style={styles.sectionTitle}>Logros recientes</Text>
+            <View
+              style={{ flexDirection: "row", justifyContent: "space-between" }}
+            >
+              <Text style={styles.sectionTitle}>Logros recientes</Text>
+              <Text style={styles.achievementLabel}>Ver más</Text>
+            </View>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -92,7 +103,7 @@ const Profile = () => {
             >
               {achievements.map((a) => (
                 <View key={a.label} style={styles.achievementCard}>
-                  <Text style={styles.achievementEmoji}>{a.icon}</Text>
+                  <a.icon size={24} color={twColors.primary} />
                   <Text style={styles.achievementLabel}>{a.label}</Text>
                 </View>
               ))}
@@ -213,7 +224,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     borderTopWidth: borderWidth.default,
     borderTopColor: "transparent",
-    paddingTop: 14,
   },
   statItem: {
     alignItems: "center",
@@ -254,15 +264,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     minWidth: 88,
   },
-  achievementEmoji: {
-    fontSize: 24,
-  },
   achievementLabel: {
     fontSize: 10,
     fontFamily: twFonts.regular,
     color: twColors.muted,
     marginTop: 4,
     textAlign: "center",
+    cursor: "pointer",
   },
   menuList: {
     gap: 8,

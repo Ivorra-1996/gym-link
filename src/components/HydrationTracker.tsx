@@ -1,25 +1,31 @@
-import { Droplets, Plus } from "lucide-react-native";
+import { Droplets, Minus, Plus } from "lucide-react-native";
 import { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from "react-native-reanimated";
 import {
-    borderWidth,
-    twColors,
-    twFonts,
-    twRadius,
+  borderWidth,
+  twColors,
+  twFonts,
+  twRadius,
 } from "../constants/tailwind-runtime-theme";
 
 interface HydrationTrackerProps {
   glasses: number;
   goal: number;
   onAdd: () => void;
+  onRemove: () => void;
 }
 
-const HydrationTracker = ({ glasses, goal, onAdd }: HydrationTrackerProps) => {
+const HydrationTracker = ({
+  glasses,
+  goal,
+  onAdd,
+  onRemove,
+}: HydrationTrackerProps) => {
   const progress = Math.min((glasses / goal) * 100, 100);
   const progressWidth = useSharedValue(0);
 
@@ -47,20 +53,30 @@ const HydrationTracker = ({ glasses, goal, onAdd }: HydrationTrackerProps) => {
         <Animated.View style={[styles.progressFill, animatedStyle]} />
       </View>
 
-      <View style={styles.glassesRow}>
-        {Array.from({ length: goal }).map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.glassBar,
-              i < glasses ? styles.glassActive : styles.glassInactive,
-            ]}
-          />
-        ))}
+      <View style={styles.row}>
+        <View style={styles.glassesRow}>
+          {Array.from({ length: goal }).map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.glassBar,
+                i < glasses ? styles.glassActive : styles.glassInactive,
+              ]}
+            />
+          ))}
+        </View>
+        <View style={{ display: "flex", flexDirection: "row", gap: 12 }}>
+          <Pressable
+            onPress={onRemove}
+            style={[styles.addButton, { backgroundColor: twColors.border }]}
+          >
+            <Minus size={16} color={twColors.primary} />
+          </Pressable>
 
-        <Pressable onPress={onAdd} style={styles.addButton}>
-          <Plus size={16} color={twColors.background} />
-        </Pressable>
+          <Pressable onPress={onAdd} style={styles.addButton}>
+            <Plus size={16} color={twColors.background} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -107,6 +123,11 @@ const styles = StyleSheet.create({
     backgroundColor: twColors.primary,
     borderRadius: 999,
   },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   glassesRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -124,7 +145,6 @@ const styles = StyleSheet.create({
     backgroundColor: twColors.border,
   },
   addButton: {
-    marginLeft: "auto",
     width: 34,
     height: 34,
     borderRadius: twRadius.lg + 1,

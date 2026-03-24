@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
   exerciseMetaLabel: {
     fontSize: 12,
     fontFamily: twFonts.regular,
-    color: twColors.muted,
+    color: twColors.accent,
   },
   exerciseMetaLabelDescription: {
     fontSize: 12,
