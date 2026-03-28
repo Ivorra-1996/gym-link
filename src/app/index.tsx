@@ -85,18 +85,14 @@ const Index = () => {
       >
         <View style={styles.heroContainer}>
           <Image
-            source={require("../../assets/hero-fitness.jpg")}
+            source={require("../../assets/GymLink.png")}
             contentFit="cover"
-            style={styles.heroImage}
+            style={[styles.heroImage]}
           />
           <View style={styles.heroOverlay} />
 
           <View style={styles.heroBottom}>
-            <View>
-              <Text style={styles.heroSubtitle}>Buenas tardes 👋</Text>
-              <Text style={styles.heroTitle}>Gym Link</Text>
-            </View>
-
+            <View>{/* <Text style={styles.heroTitle}>Gym Link</Text> */}</View>
             <Pressable style={styles.bellButton}>
               <Bell size={18} color={twColors.foreground} />
               <View style={styles.notificationDot} />
@@ -182,6 +178,7 @@ const styles = StyleSheet.create({
     maxWidth: 512,
     position: "relative",
     overflow: "hidden",
+    borderRadius: twRadius.sm,
   },
   heroImage: {
     ...StyleSheet.absoluteFillObject,
