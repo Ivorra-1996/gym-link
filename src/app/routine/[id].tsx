@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
 import { Link, useLocalSearchParams } from "expo-router";
+import { SquarePen } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import {
@@ -121,7 +122,14 @@ export default function RoutinePage() {
             <View style={styles.exerciseList}>
               {routine.exercises.map((exercise) => (
                 <View key={exercise.id} style={styles.exerciseCard}>
-                  <Text style={styles.exerciseName}>{exercise.name}</Text>
+                  <View style={styles.exerciseMetaRow}>
+                    <Text style={styles.exerciseName}>{exercise.name}</Text>
+                    <SquarePen
+                      size={18}
+                      color={twColors.primary}
+                      style={{ cursor: "pointer" }}
+                    />
+                  </View>
                   <View style={styles.exerciseMetaRow}>
                     <View style={styles.exerciseMetaColum}>
                       <View style={styles.exerciseMetaItem}>
