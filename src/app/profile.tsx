@@ -1,7 +1,7 @@
+import { Href, router } from "expo-router";
 import {
   Calendar,
   ChevronRight,
-  Dumbbell,
   Flame,
   Settings,
   TrendingUp,
@@ -33,9 +33,14 @@ const stats = [
 ];
 
 const menuItems = [
-  { icon: Dumbbell, label: "Mis Rutinas", count: "5" },
-  { icon: TrendingUp, label: "Estadísticas", count: "" },
-  { icon: Calendar, label: "Historial", count: "48" },
+  // { icon: Dumbbell, label: "Mis Rutinas", count: "5" },
+  {
+    icon: TrendingUp,
+    label: "Estadísticas mensual",
+    count: "",
+    href: "/statistics",
+  },
+  { icon: Calendar, label: "Historial", count: "48", href: "/history" },
   // { icon: Award, label: "Logros", count: "12" },
   // { icon: UploadCloud, label: "Progreso", count: "" },
 ];
@@ -124,6 +129,11 @@ const Profile = () => {
                 ]}
                 onHoverIn={() => setHoveredItem(m.label)}
                 onHoverOut={() => setHoveredItem(null)}
+                onPress={() => {
+                  if (m.href) {
+                    router.push(m.href as Href);
+                  }
+                }}
               >
                 <View style={styles.menuIconWrap}>
                   <m.icon size={16} color={twColors.primary} />
