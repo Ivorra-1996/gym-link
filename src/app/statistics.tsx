@@ -20,7 +20,7 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import Svg, { Circle, Line, Polygon } from "react-native-svg";
 
 const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun"] as const;
-const size = 260;
+const size = 320;
 
 const monthlyData: Record<
   (typeof MONTHS)[number],
@@ -156,7 +156,7 @@ function RadarChart() {
   const dimensions = animatedData.map((item) => item.dimension);
 
   const center = size / 2;
-  const maxRadius = 92;
+  const maxRadius = 118;
   const levels = 5;
   const ringSize = 80;
   const ringCenter = ringSize / 2;
@@ -224,6 +224,7 @@ function RadarChart() {
       (360 / dimensions.length) * index,
     ),
   );
+  const scaleTicks = [100, 75, 50, 25, 0];
 
   return (
     <View>
@@ -296,6 +297,7 @@ function RadarChart() {
               fill={`${twColors.accent}26`}
               stroke={twColors.accent}
               strokeWidth={1.5}
+              strokeDasharray="5 5"
             />
           )}
 
@@ -326,6 +328,16 @@ function RadarChart() {
         </Svg>
 
         <View style={styles.labelsWrap}>
+          {scaleTicks.map((tick, index) => {
+            const y =
+              tick === 0 ? center - 8 : center - (maxRadius * tick) / 100 - 8;
+            return (
+              <Text key={`tick-${tick}`} style={[styles.scaleTick, { top: y }]}>
+                {tick}
+              </Text>
+            );
+          })}
+
           {dimensions.map((dimension, index) => {
             const labelPoint = labelPoints[index];
             return (
@@ -334,7 +346,7 @@ function RadarChart() {
                 style={[
                   styles.axisLabel,
                   {
-                    left: labelPoint.x - 36,
+                    left: labelPoint.x - 42,
                     top: labelPoint.y - 8,
                   },
                 ]}
@@ -472,7 +484,6 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    marginBottom: 8,
   },
   badge: {
     flexDirection: "row",
@@ -513,10 +524,9 @@ const styles = StyleSheet.create({
   },
   chartWrapper: {
     width: "100%",
-    height: 280,
+    height: 350,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 8,
   },
   labelsWrap: {
     position: "absolute",
@@ -529,7 +539,14 @@ const styles = StyleSheet.create({
     fontFamily: twFonts.medium,
     color: twColors.mutedForeground,
     textAlign: "center",
-    width: 72,
+    width: 88,
+  },
+  scaleTick: {
+    position: "absolute",
+    left: size / 2 - 4,
+    fontSize: 11,
+    fontFamily: twFonts.regular,
+    color: twColors.mutedForeground,
   },
   progressRow: {
     flexDirection: "row",
