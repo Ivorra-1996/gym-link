@@ -5,7 +5,7 @@ import {
     twRadius,
 } from "@/constants/tailwind-runtime-theme";
 import { Link, useRouter } from "expo-router";
-import { ChevronRight, Dumbbell } from "lucide-react-native";
+import { ArrowLeft, ChevronRight, Dumbbell } from "lucide-react-native";
 import React from "react";
 import {
     Easing,
@@ -415,8 +415,11 @@ export default function Statistics() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          <Link href="/profile" style={styles.backLink}>
-            ← Volver
+          <Link href="/profile" asChild>
+            <Pressable style={styles.backButton}>
+              <ArrowLeft size={18} color={twColors.primary} />
+              <Text style={styles.backText}>Volver</Text>
+            </Pressable>
           </Link>
           <Animated.View
             entering={FadeInUp.duration(500)}
@@ -477,10 +480,17 @@ const styles = StyleSheet.create({
     paddingBottom: 96,
     gap: 16,
   },
-  backLink: {
-    color: twColors.primary,
-    fontSize: 14,
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    marginBottom: 4,
+  },
+  backText: {
+    fontSize: 13,
     fontFamily: twFonts.medium,
+    color: twColors.primary,
   },
   header: {
     alignItems: "center",

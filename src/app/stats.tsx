@@ -1,8 +1,8 @@
 import {
-    borderWidth,
-    twColors,
-    twFonts,
-    twRadius,
+  borderWidth,
+  twColors,
+  twFonts,
+  twRadius,
 } from "@/constants/tailwind-runtime-theme";
 import { useRouter } from "expo-router";
 import { ArrowLeft, TrendingUp } from "lucide-react-native";

@@ -1,8 +1,8 @@
 import { Image } from "expo-image";
 import { Link, useLocalSearchParams } from "expo-router";
-import { SquarePen } from "lucide-react-native";
+import { ArrowLeft, SquarePen } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   borderWidth,
   twColors,
@@ -104,8 +104,11 @@ export default function RoutinePage() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          <Link href="/train" style={styles.backLink}>
-            ← Volver
+          <Link href="/train" asChild>
+            <Pressable style={styles.backButton}>
+              <ArrowLeft size={18} color={twColors.primary} />
+              <Text style={styles.backText}>Volver</Text>
+            </Pressable>
           </Link>
 
           <Text style={styles.title}>{routine.name}</Text>
@@ -193,6 +196,18 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     paddingBottom: 96,
     gap: 20,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    marginBottom: 4,
+  },
+  backText: {
+    fontSize: 13,
+    fontFamily: twFonts.medium,
+    color: twColors.primary,
   },
   statusContainer: {
     flex: 1,
