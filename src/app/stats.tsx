@@ -7,7 +7,14 @@ import {
 import { useRouter } from "expo-router";
 import { ArrowLeft, TrendingUp } from "lucide-react-native";
 import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import Svg, { Circle, Line, Polyline, Rect } from "react-native-svg";
 
@@ -130,13 +137,47 @@ const chartColors = [
   twColors.destructive,
 ];
 
+const CHART_WIDTH = 440;
+const CHART_HEIGHT = 220;
+const CHART_LEFT = 28;
+const CHART_RIGHT = 10;
+const CHART_TOP = 10;
+const CHART_BOTTOM = 28;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+
+function ChartTooltip({ monthIndex }: { monthIndex: number }) {
+  const month = MONTHS[monthIndex];
+  const values = monthlyData[month];
+
+  return (
+    <View style={styles.tooltipCard} pointerEvents="none">
+      <Text style={styles.tooltipMonth}>{month}</Text>
+      {values.map((item, index) => (
+        <Text
+          key={`${month}-${item.dimension}`}
+          style={[styles.tooltipValue, { color: chartColors[index] }]}
+        >
+          {item.dimension}: {item.value}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
 function GroupedBarsChart() {
-  const width = 440;
-  const height = 220;
-  const left = 28;
-  const right = 10;
-  const top = 10;
-  const bottom = 28;
+  const isWeb = Platform.OS === "web";
+  const [activeMonthIndex, setActiveMonthIndex] = React.useState<number | null>(
+    null,
+  );
+
+  const width = CHART_WIDTH;
+  const height = CHART_HEIGHT;
+  const left = CHART_LEFT;
+  const right = CHART_RIGHT;
+  const top = CHART_TOP;
+  const bottom = CHART_BOTTOM;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
   const groupWidth = plotWidth / evolutionByMonth.length;
@@ -149,47 +190,126 @@ function GroupedBarsChart() {
 
   const gridTicks = [0, 25, 50, 75, 100];
 
+  const updateActiveMonth = (locationX: number, locationY: number) => {
+    const insideX = locationX >= left && locationX <= width - right;
+    const insideY = locationY >= top && locationY <= height - bottom;
+    if (!insideX || !insideY) {
+      setActiveMonthIndex(null);
+      return;
+    }
+
+    const idx = clamp(
+      Math.round((locationX - left - groupWidth / 2) / groupWidth),
+      0,
+      MONTHS.length - 1,
+    );
+    setActiveMonthIndex((prev) => (prev === idx ? prev : idx));
+  };
+
+  const crosshairX =
+    activeMonthIndex === null
+      ? null
+      : left + groupWidth * (activeMonthIndex + 0.5);
+  const tooltipWidth = 140;
+  const tooltipLeft =
+    crosshairX === null
+      ? 0
+      : clamp(crosshairX - tooltipWidth / 2, 8, width - tooltipWidth - 8);
+
   return (
     <View>
-      <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-        {gridTicks.map((tick) => {
-          const y = top + (1 - tick / 100) * plotHeight;
-          return (
-            <Line
-              key={`grid-${tick}`}
-              x1={left}
-              y1={y}
-              x2={width - right}
-              y2={y}
-              stroke={twColors.border}
-              strokeWidth={borderWidth.default}
-            />
-          );
-        })}
-
-        {evolutionByMonth.map((monthData, monthIndex) => {
-          const monthLeft = left + monthIndex * groupWidth + 4;
-          return dimensionNames.map((dim, dimIndex) => {
-            const value = Number(monthData[dim]);
-            const h = (value / 100) * plotHeight;
-            const x = monthLeft + dimIndex * (barWidth + barGap);
-            const y = top + (plotHeight - h);
-
+      <View
+        style={styles.chartInteractiveWrap}
+        onStartShouldSetResponder={() => !isWeb}
+        onMoveShouldSetResponder={() => !isWeb}
+        onResponderGrant={(event) =>
+          updateActiveMonth(
+            event.nativeEvent.locationX,
+            event.nativeEvent.locationY,
+          )
+        }
+        onResponderMove={(event) =>
+          updateActiveMonth(
+            event.nativeEvent.locationX,
+            event.nativeEvent.locationY,
+          )
+        }
+        onResponderRelease={() => setActiveMonthIndex(null)}
+        onResponderTerminate={() => setActiveMonthIndex(null)}
+        onPointerMove={(event) =>
+          updateActiveMonth(
+            event.nativeEvent.offsetX,
+            event.nativeEvent.offsetY,
+          )
+        }
+        onPointerLeave={() => setActiveMonthIndex(null)}
+      >
+        <Svg
+          width={width}
+          height={height}
+          viewBox={`0 0 ${width} ${height}`}
+          pointerEvents="none"
+        >
+          {gridTicks.map((tick) => {
+            const y = top + (1 - tick / 100) * plotHeight;
             return (
-              <Rect
-                key={`${String(monthData.mes)}-${dim}`}
-                x={x}
-                y={y}
-                width={barWidth}
-                height={h}
-                rx={2}
-                fill={chartColors[dimIndex]}
-                opacity={0.85}
+              <Line
+                key={`grid-${tick}`}
+                x1={left}
+                y1={y}
+                x2={width - right}
+                y2={y}
+                stroke={twColors.border}
+                strokeWidth={borderWidth.default}
               />
             );
-          });
-        })}
-      </Svg>
+          })}
+
+          {crosshairX !== null && (
+            <Line
+              x1={crosshairX}
+              y1={top}
+              x2={crosshairX}
+              y2={height - bottom}
+              stroke={twColors.foreground}
+              strokeWidth={1}
+              opacity={0.7}
+            />
+          )}
+
+          {evolutionByMonth.map((monthData, monthIndex) => {
+            const monthLeft = left + monthIndex * groupWidth + 4;
+            return dimensionNames.map((dim, dimIndex) => {
+              const value = Number(monthData[dim]);
+              const h = (value / 100) * plotHeight;
+              const x = monthLeft + dimIndex * (barWidth + barGap);
+              const y = top + (plotHeight - h);
+
+              return (
+                <Rect
+                  key={`${String(monthData.mes)}-${dim}`}
+                  x={x}
+                  y={y}
+                  width={barWidth}
+                  height={h}
+                  rx={2}
+                  fill={chartColors[dimIndex]}
+                  opacity={0.85}
+                />
+              );
+            });
+          })}
+        </Svg>
+
+        {activeMonthIndex !== null && (
+          <View
+            pointerEvents="none"
+            style={[styles.tooltipWrap, { left: tooltipLeft, top: 12 }]}
+          >
+            <ChartTooltip monthIndex={activeMonthIndex} />
+          </View>
+        )}
+      </View>
 
       <View style={styles.monthsAxisRow}>
         {MONTHS.map((month) => (
@@ -203,74 +323,163 @@ function GroupedBarsChart() {
 }
 
 function MultiLineChart() {
-  const width = 440;
-  const height = 220;
-  const left = 28;
-  const right = 10;
-  const top = 10;
-  const bottom = 28;
+  const isWeb = Platform.OS === "web";
+  const [activeMonthIndex, setActiveMonthIndex] = React.useState<number | null>(
+    null,
+  );
+
+  const width = CHART_WIDTH;
+  const height = CHART_HEIGHT;
+  const left = CHART_LEFT;
+  const right = CHART_RIGHT;
+  const top = CHART_TOP;
+  const bottom = CHART_BOTTOM;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
 
   const gridTicks = [0, 25, 50, 75, 100];
 
+  const updateActiveMonth = (locationX: number, locationY: number) => {
+    const insideX = locationX >= left && locationX <= width - right;
+    const insideY = locationY >= top && locationY <= height - bottom;
+    if (!insideX || !insideY) {
+      setActiveMonthIndex(null);
+      return;
+    }
+
+    const ratio = (locationX - left) / plotWidth;
+    const idx = clamp(
+      Math.round(ratio * (MONTHS.length - 1)),
+      0,
+      MONTHS.length - 1,
+    );
+    setActiveMonthIndex((prev) => (prev === idx ? prev : idx));
+  };
+
+  const crosshairX =
+    activeMonthIndex === null
+      ? null
+      : left + (activeMonthIndex / (evolutionByMonth.length - 1)) * plotWidth;
+  const tooltipWidth = 140;
+  const tooltipLeft =
+    crosshairX === null
+      ? 0
+      : clamp(crosshairX - tooltipWidth / 2, 8, width - tooltipWidth - 8);
+
   return (
     <View>
-      <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-        {gridTicks.map((tick) => {
-          const y = top + (1 - tick / 100) * plotHeight;
-          return (
-            <Line
-              key={`line-grid-${tick}`}
-              x1={left}
-              y1={y}
-              x2={width - right}
-              y2={y}
-              stroke={twColors.border}
-              strokeWidth={borderWidth.default}
-            />
-          );
-        })}
-
-        {dimensionNames.map((dim, dimIndex) => {
-          const points = evolutionByMonth
-            .map((monthData, monthIndex) => {
-              const x =
-                left + (monthIndex / (evolutionByMonth.length - 1)) * plotWidth;
-              const value = Number(monthData[dim]);
-              const y = top + (1 - value / 100) * plotHeight;
-              return `${x},${y}`;
-            })
-            .join(" ");
-
-          return (
-            <React.Fragment key={`line-${dim}`}>
-              <Polyline
-                points={points}
-                fill="none"
-                stroke={chartColors[dimIndex]}
-                strokeWidth={2.5}
+      <View
+        style={styles.chartInteractiveWrap}
+        onStartShouldSetResponder={() => !isWeb}
+        onMoveShouldSetResponder={() => !isWeb}
+        onResponderGrant={(event) =>
+          updateActiveMonth(
+            event.nativeEvent.locationX,
+            event.nativeEvent.locationY,
+          )
+        }
+        onResponderMove={(event) =>
+          updateActiveMonth(
+            event.nativeEvent.locationX,
+            event.nativeEvent.locationY,
+          )
+        }
+        onResponderRelease={() => setActiveMonthIndex(null)}
+        onResponderTerminate={() => setActiveMonthIndex(null)}
+        onPointerMove={(event) =>
+          updateActiveMonth(
+            event.nativeEvent.offsetX,
+            event.nativeEvent.offsetY,
+          )
+        }
+        onPointerLeave={() => setActiveMonthIndex(null)}
+      >
+        <Svg
+          width={width}
+          height={height}
+          viewBox={`0 0 ${width} ${height}`}
+          pointerEvents="none"
+        >
+          {gridTicks.map((tick) => {
+            const y = top + (1 - tick / 100) * plotHeight;
+            return (
+              <Line
+                key={`line-grid-${tick}`}
+                x1={left}
+                y1={y}
+                x2={width - right}
+                y2={y}
+                stroke={twColors.border}
+                strokeWidth={borderWidth.default}
               />
-              {evolutionByMonth.map((monthData, monthIndex) => {
+            );
+          })}
+
+          {crosshairX !== null && (
+            <Line
+              x1={crosshairX}
+              y1={top}
+              x2={crosshairX}
+              y2={height - bottom}
+              stroke={twColors.foreground}
+              strokeWidth={1}
+              opacity={0.7}
+            />
+          )}
+
+          {dimensionNames.map((dim, dimIndex) => {
+            const points = evolutionByMonth
+              .map((monthData, monthIndex) => {
                 const x =
                   left +
                   (monthIndex / (evolutionByMonth.length - 1)) * plotWidth;
                 const value = Number(monthData[dim]);
                 const y = top + (1 - value / 100) * plotHeight;
-                return (
-                  <Circle
-                    key={`${dim}-${String(monthData.mes)}`}
-                    cx={x}
-                    cy={y}
-                    r={3.4}
-                    fill={chartColors[dimIndex]}
-                  />
-                );
-              })}
-            </React.Fragment>
-          );
-        })}
-      </Svg>
+                return `${x},${y}`;
+              })
+              .join(" ");
+
+            return (
+              <React.Fragment key={`line-${dim}`}>
+                <Polyline
+                  points={points}
+                  fill="none"
+                  stroke={chartColors[dimIndex]}
+                  strokeWidth={2.5}
+                />
+                {evolutionByMonth.map((monthData, monthIndex) => {
+                  const x =
+                    left +
+                    (monthIndex / (evolutionByMonth.length - 1)) * plotWidth;
+                  const value = Number(monthData[dim]);
+                  const y = top + (1 - value / 100) * plotHeight;
+                  const isActive = monthIndex === activeMonthIndex;
+                  return (
+                    <Circle
+                      key={`${dim}-${String(monthData.mes)}`}
+                      cx={x}
+                      cy={y}
+                      r={isActive ? 4.4 : 3.4}
+                      fill={chartColors[dimIndex]}
+                      stroke={isActive ? twColors.foreground : "none"}
+                      strokeWidth={isActive ? 1.2 : 0}
+                    />
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
+        </Svg>
+
+        {activeMonthIndex !== null && (
+          <View
+            pointerEvents="none"
+            style={[styles.tooltipWrap, { left: tooltipLeft, top: 12 }]}
+          >
+            <ChartTooltip monthIndex={activeMonthIndex} />
+          </View>
+        )}
+      </View>
 
       <View style={styles.monthsAxisRow}>
         {MONTHS.map((month) => (
@@ -497,6 +706,35 @@ const styles = StyleSheet.create({
     color: twColors.foreground,
     marginBottom: 10,
     paddingHorizontal: 6,
+  },
+  chartInteractiveWrap: {
+    position: "relative",
+    width: CHART_WIDTH,
+    height: CHART_HEIGHT,
+    alignSelf: "center",
+  },
+  tooltipWrap: {
+    position: "absolute",
+  },
+  tooltipCard: {
+    width: 140,
+    backgroundColor: twColors.background,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    borderRadius: twRadius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 4,
+  },
+  tooltipMonth: {
+    fontSize: 14,
+    fontFamily: twFonts.bold,
+    color: twColors.foreground,
+    marginBottom: 2,
+  },
+  tooltipValue: {
+    fontSize: 12,
+    fontFamily: twFonts.medium,
   },
   monthsAxisRow: {
     marginTop: -2,
