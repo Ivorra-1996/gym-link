@@ -1,7 +1,7 @@
 import { Tabs, router } from 'expo-router';
 import { Dumbbell, Home, Play, Search, User } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useWorkout } from '@/context/WorkoutContext';
 import { formatDuration } from '@/utils/workout';
 import { twColors, twFonts, borderWidth } from '@/constants/tailwind-runtime-theme';
@@ -40,7 +40,31 @@ function SessionBanner() {
   );
 }
 
+function useSessionRecoveryPrompt() {
+  const { session, endSession } = useWorkout();
+  const shown = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!session || shown.current) return;
+    // Skip if session just started (< 60 seconds ago)
+    if (Date.now() - session.startedAt < 60_000) return;
+    shown.current = true;
+    const timer = setTimeout(() => {
+      Alert.alert(
+        'Entrenamiento en progreso',
+        `Tenés una sesión de "${session.routineName}" sin terminar. ¿Querés continuar?`,
+        [
+          { text: 'Descartar', style: 'destructive', onPress: endSession },
+          { text: 'Continuar', onPress: () => router.push('/workout/active' as never) },
+        ],
+      );
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [session, endSession]);
+}
+
 export default function TabsLayout() {
+  useSessionRecoveryPrompt();
   return (
     <View style={{ flex: 1 }}>
       <Tabs

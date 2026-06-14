@@ -23,7 +23,7 @@ import {
 SplashScreen.preventAutoHideAsync();
 
 function InitialLayout() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const colorScheme = useColorScheme();
@@ -34,21 +34,20 @@ function InitialLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-      seedDefaultRoutinesIfEmpty();
-    }
+    if (fontsLoaded) SplashScreen.hideAsync();
   }, [fontsLoaded]);
 
   useEffect(() => {
-    if (!fontsLoaded) return;
+    if (!fontsLoaded || authLoading) return;
     const onLoginScreen = pathname === "/login";
     if (!user && !onLoginScreen) {
       router.replace("/login" as never);
     } else if (user && onLoginScreen) {
       router.replace("/" as never);
+    } else if (user) {
+      seedDefaultRoutinesIfEmpty();
     }
-  }, [user, pathname, fontsLoaded]);
+  }, [user, pathname, fontsLoaded, authLoading]);
 
   if (!fontsLoaded) return null;
 

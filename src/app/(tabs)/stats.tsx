@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 import {
   borderWidth,
   twColors,
@@ -6,9 +7,8 @@ import {
 } from "@/constants/tailwind-runtime-theme";
 import { useRouter } from "expo-router";
 import { ArrowLeft, TrendingUp } from "lucide-react-native";
-import React from "react";
+import React, { useCallback, useState } from "react";
 import {
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,277 +16,168 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
-import Svg, { Circle, Line, Polyline, Rect } from "react-native-svg";
+import Svg, {
+  Circle,
+  Line,
+  Polyline,
+  Rect,
+  Text as SvgText,
+} from "react-native-svg";
+import { getSessions } from "@/services/storage";
+import { WorkoutSession } from "@/types";
+import { calculateStreak, countWeekSessions } from "@/utils/workout";
 
-const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun"] as const;
+const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
-const monthlyData: Record<
-  (typeof MONTHS)[number],
-  { dimension: string; value: number }[]
-> = {
-  Ene: [
-    { dimension: "Fuerza", value: 30 },
-    { dimension: "Volumen", value: 25 },
-    { dimension: "Repeticiones", value: 40 },
-    { dimension: "Consistencia", value: 20 },
-    { dimension: "Resistencia", value: 35 },
-  ],
-  Feb: [
-    { dimension: "Fuerza", value: 40 },
-    { dimension: "Volumen", value: 35 },
-    { dimension: "Repeticiones", value: 45 },
-    { dimension: "Consistencia", value: 40 },
-    { dimension: "Resistencia", value: 40 },
-  ],
-  Mar: [
-    { dimension: "Fuerza", value: 55 },
-    { dimension: "Volumen", value: 50 },
-    { dimension: "Repeticiones", value: 55 },
-    { dimension: "Consistencia", value: 55 },
-    { dimension: "Resistencia", value: 48 },
-  ],
-  Abr: [
-    { dimension: "Fuerza", value: 62 },
-    { dimension: "Volumen", value: 58 },
-    { dimension: "Repeticiones", value: 60 },
-    { dimension: "Consistencia", value: 65 },
-    { dimension: "Resistencia", value: 55 },
-  ],
-  May: [
-    { dimension: "Fuerza", value: 75 },
-    { dimension: "Volumen", value: 68 },
-    { dimension: "Repeticiones", value: 70 },
-    { dimension: "Consistencia", value: 78 },
-    { dimension: "Resistencia", value: 65 },
-  ],
-  Jun: [
-    { dimension: "Fuerza", value: 85 },
-    { dimension: "Volumen", value: 78 },
-    { dimension: "Repeticiones", value: 80 },
-    { dimension: "Consistencia", value: 88 },
-    { dimension: "Resistencia", value: 75 },
-  ],
-};
-
-const statsCards = [
-  { label: "Sesiones totales", value: "72", change: "+12 este mes", goal: 80, current: 72 },
-  { label: "PR en press banca", value: "95 kg", change: "+5 kg", goal: 100, current: 95 },
-  { label: "Volumen total (ton)", value: "184", change: "+22 ton", goal: 200, current: 184 },
-  { label: "Dias consecutivos", value: "18", change: "Racha actual", goal: 30, current: 18 },
-  { label: "Promedio reps/serie", value: "10.4", change: "+0.8", goal: 12, current: 10.4 },
-  { label: "Grupos musculares", value: "5/5", change: "Completo", goal: 5, current: 5 },
-];
-
-const dimensionNames = ["Fuerza", "Volumen", "Repeticiones", "Consistencia", "Resistencia"];
-
-const evolutionByMonth = MONTHS.map((month) => {
-  const entry: Record<string, string | number> = { mes: month };
-  monthlyData[month].forEach((item) => {
-    entry[item.dimension] = item.value;
+function getLast6Months(): { label: string; year: number; month: number }[] {
+  const now = new Date();
+  return Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    return { label: MONTH_NAMES[d.getMonth()], year: d.getFullYear(), month: d.getMonth() };
   });
-  return entry;
-});
+}
 
-const chartColors = [
-  twColors.primary,
-  twColors.ring,
-  twColors.warning,
-  twColors.accent,
-  twColors.destructive,
-];
+function getMonthSessions(sessions: WorkoutSession[], year: number, month: number) {
+  return sessions.filter((s) => {
+    const d = new Date(s.startedAt);
+    return d.getFullYear() === year && d.getMonth() === month;
+  });
+}
 
-const CHART_WIDTH = 440;
-const CHART_HEIGHT = 220;
-const CHART_LEFT = 28;
-const CHART_RIGHT = 10;
-const CHART_TOP = 10;
-const CHART_BOTTOM = 28;
+// ── Charts ─────────────────────────────────────────────────────────────────────
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, value));
+const CHART_W = 320;
+const CHART_H = 160;
+const PAD_L = 28;
+const PAD_R = 10;
+const PAD_T = 12;
+const PAD_B = 26;
 
-function ChartTooltip({ monthIndex }: { monthIndex: number }) {
-  const month = MONTHS[monthIndex];
-  const values = monthlyData[month];
+function SessionsBarChart({ data }: { data: { label: string; value: number }[] }) {
+  const maxVal = Math.max(...data.map((d) => d.value), 1);
+  const plotW = CHART_W - PAD_L - PAD_R;
+  const plotH = CHART_H - PAD_T - PAD_B;
+  const slot = plotW / data.length;
+  const barW = slot * 0.55;
+
   return (
-    <View style={styles.tooltipCard} pointerEvents="none">
-      <Text style={styles.tooltipMonth}>{month}</Text>
-      {values.map((item, index) => (
-        <Text key={`${month}-${item.dimension}`} style={[styles.tooltipValue, { color: chartColors[index] }]}>
-          {item.dimension}: {item.value}
-        </Text>
+    <Svg width={CHART_W} height={CHART_H}>
+      {[0, 0.5, 1].map((pct) => {
+        const y = PAD_T + (1 - pct) * plotH;
+        return (
+          <React.Fragment key={pct}>
+            <Line x1={PAD_L} y1={y} x2={CHART_W - PAD_R} y2={y} stroke={twColors.border} strokeWidth={0.5} />
+            <SvgText x={PAD_L - 3} y={y + 4} textAnchor="end" fontSize={9} fill={twColors.muted}>
+              {Math.round(maxVal * pct)}
+            </SvgText>
+          </React.Fragment>
+        );
+      })}
+      {data.map((d, i) => {
+        const barH = Math.max(2, (d.value / maxVal) * plotH);
+        const x = PAD_L + i * slot + (slot - barW) / 2;
+        const y = PAD_T + plotH - barH;
+        return (
+          <React.Fragment key={d.label}>
+            <Rect x={x} y={y} width={barW} height={barH} rx={3} fill={twColors.primary} opacity={0.85} />
+            <SvgText x={x + barW / 2} y={CHART_H - PAD_B + 14} textAnchor="middle" fontSize={10} fill={twColors.muted}>
+              {d.label}
+            </SvgText>
+            {d.value > 0 && (
+              <SvgText x={x + barW / 2} y={y - 4} textAnchor="middle" fontSize={9} fill={twColors.primary} fontWeight="bold">
+                {d.value}
+              </SvgText>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </Svg>
+  );
+}
+
+function VolumeLineChart({ data }: { data: { label: string; value: number }[] }) {
+  const maxVal = Math.max(...data.map((d) => d.value), 1);
+  const plotW = CHART_W - PAD_L - PAD_R;
+  const plotH = CHART_H - PAD_T - PAD_B;
+  const toX = (i: number) =>
+    data.length < 2 ? PAD_L + plotW / 2 : PAD_L + (i / (data.length - 1)) * plotW;
+  const toY = (v: number) => PAD_T + (1 - v / maxVal) * plotH;
+  const points = data.map((d, i) => `${toX(i)},${toY(d.value)}`).join(' ');
+
+  return (
+    <Svg width={CHART_W} height={CHART_H}>
+      {[0, 0.5, 1].map((pct) => {
+        const y = PAD_T + (1 - pct) * plotH;
+        const label = maxVal > 0 ? `${(maxVal * pct / 1000).toFixed(1)}t` : '0';
+        return (
+          <React.Fragment key={pct}>
+            <Line x1={PAD_L} y1={y} x2={CHART_W - PAD_R} y2={y} stroke={twColors.border} strokeWidth={0.5} />
+            <SvgText x={PAD_L - 3} y={y + 4} textAnchor="end" fontSize={9} fill={twColors.muted}>{label}</SvgText>
+          </React.Fragment>
+        );
+      })}
+      {data.length > 1 && (
+        <Polyline points={points} fill="none" stroke={twColors.primary} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+      )}
+      {data.map((d, i) => (
+        <React.Fragment key={d.label}>
+          <Circle cx={toX(i)} cy={toY(d.value)} r={4} fill={twColors.primary} />
+          <SvgText x={toX(i)} y={CHART_H - PAD_B + 14} textAnchor="middle" fontSize={10} fill={twColors.muted}>
+            {d.label}
+          </SvgText>
+        </React.Fragment>
       ))}
-    </View>
+    </Svg>
   );
 }
 
-function GroupedBarsChart() {
-  const isWeb = Platform.OS === "web";
-  const [activeMonthIndex, setActiveMonthIndex] = React.useState<number | null>(null);
-
-  const width = CHART_WIDTH;
-  const height = CHART_HEIGHT;
-  const left = CHART_LEFT;
-  const right = CHART_RIGHT;
-  const top = CHART_TOP;
-  const bottom = CHART_BOTTOM;
-  const plotWidth = width - left - right;
-  const plotHeight = height - top - bottom;
-  const groupWidth = plotWidth / evolutionByMonth.length;
-  const barGap = 2;
-  const barWidth = Math.max(4, (groupWidth - 8 - barGap * (dimensionNames.length - 1)) / dimensionNames.length);
-  const gridTicks = [0, 25, 50, 75, 100];
-
-  const updateActiveMonth = (locationX: number, locationY: number) => {
-    const insideX = locationX >= left && locationX <= width - right;
-    const insideY = locationY >= top && locationY <= height - bottom;
-    if (!insideX || !insideY) { setActiveMonthIndex(null); return; }
-    const idx = clamp(Math.round((locationX - left - groupWidth / 2) / groupWidth), 0, MONTHS.length - 1);
-    setActiveMonthIndex((prev) => (prev === idx ? prev : idx));
-  };
-
-  const crosshairX = activeMonthIndex === null ? null : left + groupWidth * (activeMonthIndex + 0.5);
-  const tooltipWidth = 140;
-  const tooltipLeft = crosshairX === null ? 0 : clamp(crosshairX - tooltipWidth / 2, 8, width - tooltipWidth - 8);
-
-  return (
-    <View>
-      <View
-        style={styles.chartInteractiveWrap}
-        onStartShouldSetResponder={() => !isWeb}
-        onMoveShouldSetResponder={() => !isWeb}
-        onResponderGrant={(event) => updateActiveMonth(event.nativeEvent.locationX, event.nativeEvent.locationY)}
-        onResponderMove={(event) => updateActiveMonth(event.nativeEvent.locationX, event.nativeEvent.locationY)}
-        onResponderRelease={() => setActiveMonthIndex(null)}
-        onResponderTerminate={() => setActiveMonthIndex(null)}
-        onPointerMove={(event) => updateActiveMonth(event.nativeEvent.offsetX, event.nativeEvent.offsetY)}
-        onPointerLeave={() => setActiveMonthIndex(null)}
-      >
-        <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} pointerEvents="none">
-          {gridTicks.map((tick) => {
-            const y = top + (1 - tick / 100) * plotHeight;
-            return <Line key={`grid-${tick}`} x1={left} y1={y} x2={width - right} y2={y} stroke={twColors.border} strokeWidth={borderWidth.default} />;
-          })}
-          {crosshairX !== null && (
-            <Line x1={crosshairX} y1={top} x2={crosshairX} y2={height - bottom} stroke={twColors.foreground} strokeWidth={1} opacity={0.7} />
-          )}
-          {evolutionByMonth.map((monthData, monthIndex) => {
-            const monthLeft = left + monthIndex * groupWidth + 4;
-            return dimensionNames.map((dim, dimIndex) => {
-              const value = Number(monthData[dim]);
-              const h = (value / 100) * plotHeight;
-              const x = monthLeft + dimIndex * (barWidth + barGap);
-              const y = top + (plotHeight - h);
-              return <Rect key={`${String(monthData.mes)}-${dim}`} x={x} y={y} width={barWidth} height={h} rx={2} fill={chartColors[dimIndex]} opacity={0.85} />;
-            });
-          })}
-        </Svg>
-        {activeMonthIndex !== null && (
-          <View pointerEvents="none" style={[styles.tooltipWrap, { left: tooltipLeft, top: 12 }]}>
-            <ChartTooltip monthIndex={activeMonthIndex} />
-          </View>
-        )}
-      </View>
-      <View style={styles.monthsAxisRow}>
-        {MONTHS.map((month) => <Text key={`bar-${month}`} style={styles.axisText}>{month}</Text>)}
-      </View>
-    </View>
-  );
-}
-
-function MultiLineChart() {
-  const isWeb = Platform.OS === "web";
-  const [activeMonthIndex, setActiveMonthIndex] = React.useState<number | null>(null);
-
-  const width = CHART_WIDTH;
-  const height = CHART_HEIGHT;
-  const left = CHART_LEFT;
-  const right = CHART_RIGHT;
-  const top = CHART_TOP;
-  const bottom = CHART_BOTTOM;
-  const plotWidth = width - left - right;
-  const plotHeight = height - top - bottom;
-  const gridTicks = [0, 25, 50, 75, 100];
-
-  const updateActiveMonth = (locationX: number, locationY: number) => {
-    const insideX = locationX >= left && locationX <= width - right;
-    const insideY = locationY >= top && locationY <= height - bottom;
-    if (!insideX || !insideY) { setActiveMonthIndex(null); return; }
-    const ratio = (locationX - left) / plotWidth;
-    const idx = clamp(Math.round(ratio * (MONTHS.length - 1)), 0, MONTHS.length - 1);
-    setActiveMonthIndex((prev) => (prev === idx ? prev : idx));
-  };
-
-  const crosshairX = activeMonthIndex === null ? null : left + (activeMonthIndex / (evolutionByMonth.length - 1)) * plotWidth;
-  const tooltipWidth = 140;
-  const tooltipLeft = crosshairX === null ? 0 : clamp(crosshairX - tooltipWidth / 2, 8, width - tooltipWidth - 8);
-
-  return (
-    <View>
-      <View
-        style={styles.chartInteractiveWrap}
-        onStartShouldSetResponder={() => !isWeb}
-        onMoveShouldSetResponder={() => !isWeb}
-        onResponderGrant={(event) => updateActiveMonth(event.nativeEvent.locationX, event.nativeEvent.locationY)}
-        onResponderMove={(event) => updateActiveMonth(event.nativeEvent.locationX, event.nativeEvent.locationY)}
-        onResponderRelease={() => setActiveMonthIndex(null)}
-        onResponderTerminate={() => setActiveMonthIndex(null)}
-        onPointerMove={(event) => updateActiveMonth(event.nativeEvent.offsetX, event.nativeEvent.offsetY)}
-        onPointerLeave={() => setActiveMonthIndex(null)}
-      >
-        <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} pointerEvents="none">
-          {gridTicks.map((tick) => {
-            const y = top + (1 - tick / 100) * plotHeight;
-            return <Line key={`line-grid-${tick}`} x1={left} y1={y} x2={width - right} y2={y} stroke={twColors.border} strokeWidth={borderWidth.default} />;
-          })}
-          {crosshairX !== null && (
-            <Line x1={crosshairX} y1={top} x2={crosshairX} y2={height - bottom} stroke={twColors.foreground} strokeWidth={1} opacity={0.7} />
-          )}
-          {dimensionNames.map((dim, dimIndex) => {
-            const points = evolutionByMonth.map((monthData, monthIndex) => {
-              const x = left + (monthIndex / (evolutionByMonth.length - 1)) * plotWidth;
-              const value = Number(monthData[dim]);
-              const y = top + (1 - value / 100) * plotHeight;
-              return `${x},${y}`;
-            }).join(" ");
-            return (
-              <React.Fragment key={`line-${dim}`}>
-                <Polyline points={points} fill="none" stroke={chartColors[dimIndex]} strokeWidth={2.5} />
-                {evolutionByMonth.map((monthData, monthIndex) => {
-                  const x = left + (monthIndex / (evolutionByMonth.length - 1)) * plotWidth;
-                  const value = Number(monthData[dim]);
-                  const y = top + (1 - value / 100) * plotHeight;
-                  const isActive = monthIndex === activeMonthIndex;
-                  return (
-                    <Circle
-                      key={`${dim}-${String(monthData.mes)}`}
-                      cx={x} cy={y}
-                      r={isActive ? 4.4 : 3.4}
-                      fill={chartColors[dimIndex]}
-                      stroke={isActive ? twColors.foreground : "none"}
-                      strokeWidth={isActive ? 1.2 : 0}
-                    />
-                  );
-                })}
-              </React.Fragment>
-            );
-          })}
-        </Svg>
-        {activeMonthIndex !== null && (
-          <View pointerEvents="none" style={[styles.tooltipWrap, { left: tooltipLeft, top: 12 }]}>
-            <ChartTooltip monthIndex={activeMonthIndex} />
-          </View>
-        )}
-      </View>
-      <View style={styles.monthsAxisRow}>
-        {MONTHS.map((month) => <Text key={`line-${month}`} style={styles.axisText}>{month}</Text>)}
-      </View>
-    </View>
-  );
-}
+// ── Main screen ────────────────────────────────────────────────────────────────
 
 export default function Stats() {
   const router = useRouter();
+  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      getSessions().then(setSessions);
+    }, [])
+  );
+
+  const months = getLast6Months();
+
+  // Stats cards
+  const totalSessions = sessions.length;
+  const totalVolume = sessions.reduce((acc, s) => acc + s.totalVolume, 0);
+  const totalVolumeTons = totalVolume / 1000;
+  const streak = calculateStreak(sessions);
+  const weekSessions = countWeekSessions(sessions);
+  const avgDurationMin =
+    totalSessions > 0
+      ? Math.round(sessions.reduce((acc, s) => acc + s.durationSeconds, 0) / totalSessions / 60)
+      : 0;
+  const uniqueExercises = new Set(
+    sessions.flatMap((s) => s.exercises.map((e) => e.libraryId))
+  ).size;
+
+  const statsCards = [
+    { label: 'Sesiones totales', value: String(totalSessions), change: 'completadas', goal: 100, current: Math.min(100, totalSessions) },
+    { label: 'Volumen total', value: `${totalVolumeTons.toFixed(1)}t`, change: 'kg levantados', goal: 50, current: Math.min(50, totalVolumeTons) },
+    { label: 'Racha actual', value: `${streak} días`, change: 'días consecutivos', goal: 30, current: Math.min(30, streak) },
+    { label: 'Esta semana', value: String(weekSessions), change: 'sesiones', goal: 4, current: Math.min(4, weekSessions) },
+    { label: 'Duración promedio', value: `${avgDurationMin} min`, change: 'por sesión', goal: 60, current: Math.min(60, avgDurationMin) },
+    { label: 'Ejercicios distintos', value: String(uniqueExercises), change: 'en total', goal: 20, current: Math.min(20, uniqueExercises) },
+  ];
+
+  // Chart data
+  const barData = months.map((m) => ({
+    label: m.label,
+    value: getMonthSessions(sessions, m.year, m.month).length,
+  }));
+
+  const lineData = months.map((m) => ({
+    label: m.label,
+    value: getMonthSessions(sessions, m.year, m.month).reduce((acc, s) => acc + s.totalVolume, 0),
+  }));
 
   return (
     <View style={styles.screen}>
@@ -298,15 +189,19 @@ export default function Stats() {
           </Pressable>
 
           <Animated.View entering={FadeInUp.duration(450)}>
-            <Text style={styles.title}>Estadisticas detalladas</Text>
-            <Text style={styles.subtitle}>Tu evolucion completa mes a mes</Text>
+            <Text style={styles.title}>Estadísticas</Text>
+            <Text style={styles.subtitle}>Tu evolución completa</Text>
           </Animated.View>
 
           <View style={styles.cardsGrid}>
             {statsCards.map((stat, index) => {
               const pct = Math.min(100, Math.round((stat.current / stat.goal) * 100));
               return (
-                <Animated.View key={stat.label} entering={FadeInDown.delay(60 + index * 60).duration(350)} style={styles.card}>
+                <Animated.View
+                  key={stat.label}
+                  entering={FadeInDown.delay(60 + index * 60).duration(350)}
+                  style={styles.card}
+                >
                   <Text style={styles.cardLabel}>{stat.label}</Text>
                   <Text style={styles.cardValue}>{stat.value}</Text>
                   <View style={styles.cardChangeRow}>
@@ -318,7 +213,15 @@ export default function Stats() {
                     <Text style={styles.goalLabel}>{pct}%</Text>
                   </View>
                   <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: pct >= 100 ? twColors.primary : `${twColors.primary}B3` }]} />
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${pct}%`,
+                          backgroundColor: pct >= 100 ? twColors.primary : `${twColors.primary}B3`,
+                        },
+                      ]}
+                    />
                   </View>
                 </Animated.View>
               );
@@ -326,21 +229,13 @@ export default function Stats() {
           </View>
 
           <Animated.View entering={FadeInDown.delay(420).duration(400)} style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Progreso por dimension</Text>
-            <GroupedBarsChart />
+            <Text style={styles.chartTitle}>Sesiones por mes</Text>
+            <SessionsBarChart data={barData} />
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(520).duration(400)} style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Evolucion mensual</Text>
-            <MultiLineChart />
-            <View style={styles.legendWrap}>
-              {dimensionNames.map((dim, index) => (
-                <View key={dim} style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: chartColors[index] }]} />
-                  <Text style={styles.legendText}>{dim}</Text>
-                </View>
-              ))}
-            </View>
+            <Text style={styles.chartTitle}>Volumen por mes</Text>
+            <VolumeLineChart data={lineData} />
           </Animated.View>
         </View>
       </ScrollView>
@@ -365,19 +260,8 @@ const styles = StyleSheet.create({
   cardChange: { fontSize: 12, fontFamily: twFonts.medium, color: twColors.primary },
   goalRow: { marginTop: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   goalLabel: { fontSize: 11, fontFamily: twFonts.regular, color: twColors.mutedForeground },
-  progressTrack: { marginTop: 6, width: "100%", height: 8, borderRadius: 999, overflow: "hidden", backgroundColor: twColors.secondary },
+  progressTrack: { marginTop: 6, width: "100%", height: 8, borderRadius: 999, overflow: "hidden", backgroundColor: twColors.card2 },
   progressFill: { height: "100%", borderRadius: 999 },
-  chartCard: { backgroundColor: twColors.card, borderWidth: borderWidth.default, borderColor: twColors.border, borderRadius: twRadius.sm, paddingHorizontal: 10, paddingVertical: 14, marginTop: 4 },
-  chartTitle: { fontSize: 18, fontFamily: twFonts.bold, color: twColors.foreground, marginBottom: 10, paddingHorizontal: 6 },
-  chartInteractiveWrap: { position: "relative", width: CHART_WIDTH, height: CHART_HEIGHT, alignSelf: "center" },
-  tooltipWrap: { position: "absolute" },
-  tooltipCard: { width: 140, backgroundColor: twColors.background, borderWidth: borderWidth.default, borderColor: twColors.border, borderRadius: twRadius.sm, paddingHorizontal: 10, paddingVertical: 8, gap: 4 },
-  tooltipMonth: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.foreground, marginBottom: 2 },
-  tooltipValue: { fontSize: 12, fontFamily: twFonts.medium },
-  monthsAxisRow: { marginTop: -2, flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 30 },
-  axisText: { fontSize: 11, fontFamily: twFonts.regular, color: twColors.mutedForeground },
-  legendWrap: { marginTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center" },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  legendDot: { width: 9, height: 9, borderRadius: 999 },
-  legendText: { fontSize: 12, fontFamily: twFonts.medium, color: twColors.mutedForeground },
+  chartCard: { backgroundColor: twColors.card, borderWidth: borderWidth.default, borderColor: twColors.border, borderRadius: twRadius.sm, paddingHorizontal: 10, paddingVertical: 14, alignItems: 'center' },
+  chartTitle: { fontSize: 16, fontFamily: twFonts.bold, color: twColors.foreground, marginBottom: 10, alignSelf: 'flex-start', paddingHorizontal: 6 },
 });

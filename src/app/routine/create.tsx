@@ -8,6 +8,7 @@ import {
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -37,6 +38,7 @@ export default function CreateRoutine() {
   const [muscleGroup, setMuscleGroup] = useState('');
   const [exercises, setExercises] = useState<RoutineExercise[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!routineId) return;
@@ -96,8 +98,15 @@ export default function CreateRoutine() {
       createdAt: now,
       updatedAt: now,
     };
-    await saveRoutine(routine);
-    router.back();
+    setSaving(true);
+    try {
+      await saveRoutine(routine);
+      router.back();
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar la rutina. Intentá de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = () => {
@@ -236,10 +245,18 @@ export default function CreateRoutine() {
         </ScrollView>
 
         <View style={styles.saveFooter}>
-          <Pressable style={styles.saveBtn} onPress={handleSave}>
-            <Text style={styles.saveBtnText}>
-              {isEditing ? 'Guardar cambios' : 'Crear rutina'}
-            </Text>
+          <Pressable
+            style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color={twColors.background} />
+            ) : (
+              <Text style={styles.saveBtnText}>
+                {isEditing ? 'Guardar cambios' : 'Crear rutina'}
+              </Text>
+            )}
           </Pressable>
         </View>
 
