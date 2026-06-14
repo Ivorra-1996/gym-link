@@ -12,6 +12,7 @@ interface WorkoutContextType {
   setCurrentExercise: (index: number) => void;
   startRestTimer: (durationSeconds: number) => void;
   stopRestTimer: () => void;
+  setRestDuration: (seconds: number) => void;
   restSecondsRemaining: number;
   endSession: () => void;
 }
@@ -136,6 +137,12 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
     );
   }, [clearRestInterval]);
 
+  const setRestDuration = useCallback((seconds: number) => {
+    setSession((prev) =>
+      prev ? { ...prev, restDurationSeconds: seconds } : prev
+    );
+  }, []);
+
   const endSession = useCallback(() => {
     clearRestInterval();
     clearActiveSession();
@@ -154,6 +161,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
         setCurrentExercise,
         startRestTimer,
         stopRestTimer,
+        setRestDuration,
         restSecondsRemaining,
         endSession,
       }}

@@ -1,9 +1,8 @@
 import { router } from 'expo-router';
-import { X } from 'lucide-react-native';
+import { Trophy, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,9 +12,9 @@ import {
 import ExerciseLogger from '@/components/workout/ExerciseLogger';
 import RestTimer from '@/components/workout/RestTimer';
 import { useWorkout } from '@/context/WorkoutContext';
-import { getLastSessionForRoutine, saveSession } from '@/services/storage';
+import { getLastSessionForRoutine, getSessions, saveSession } from '@/services/storage';
 import { SessionExercise, WorkoutSession } from '@/types';
-import { calculateVolume, formatDuration, generateId } from '@/utils/workout';
+import { calculateVolume, detectPRs, formatDuration, generateId } from '@/utils/workout';
 import {
   borderWidth,
   twColors,
@@ -23,15 +22,23 @@ import {
   twRadius,
 } from '@/constants/tailwind-runtime-theme';
 
+const REST_OPTIONS = [
+  { label: '30s', value: 30 },
+  { label: '60s', value: 60 },
+  { label: '90s', value: 90 },
+  { label: '2min', value: 120 },
+  { label: '3min', value: 180 },
+];
+
 export default function ActiveWorkout() {
   const {
     session,
     updateSet,
     addSet,
-    removeSet,
     setCurrentExercise,
     startRestTimer,
     stopRestTimer,
+    setRestDuration,
     restSecondsRemaining,
     endSession,
   } = useWorkout();
@@ -40,7 +47,6 @@ export default function ActiveWorkout() {
   const [lastSessionExercises, setLastSessionExercises] = useState<
     Record<string, SessionExercise>
   >({});
-
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -58,9 +64,7 @@ export default function ActiveWorkout() {
     getLastSessionForRoutine(session.routineId).then((last) => {
       if (!last) return;
       const map: Record<string, SessionExercise> = {};
-      last.exercises.forEach((ex) => {
-        map[ex.libraryId] = ex;
-      });
+      last.exercises.forEach((ex) => { map[ex.libraryId] = ex; });
       setLastSessionExercises(map);
     });
   }, [session?.routineId]);
@@ -89,12 +93,10 @@ export default function ActiveWorkout() {
               .map((s) => ({ reps: s.reps, weight: s.weight })),
           }));
 
-          const totalVolume = exercises.reduce((acc, ex) => {
-            return (
-              acc +
-              ex.sets.reduce((s, set) => s + calculateVolume(set.weight, set.reps), 0)
-            );
-          }, 0);
+          const totalVolume = exercises.reduce(
+            (acc, ex) => acc + ex.sets.reduce((s, set) => s + calculateVolume(set.weight, set.reps), 0),
+            0
+          );
 
           const ws: WorkoutSession = {
             id: generateId(),
@@ -107,9 +109,23 @@ export default function ActiveWorkout() {
             totalVolume,
           };
 
+          // PR detection — compare against ALL previous sessions
+          const allSessions = await getSessions();
+          const prs = detectPRs(ws, allSessions);
+
           await saveSession(ws);
           endSession();
-          router.replace('/' as never);
+
+          if (prs.length > 0) {
+            const prText = prs.map((p) => `🏆 ${p.name}: ${p.weight} kg`).join('\n');
+            Alert.alert(
+              '¡Nuevos Records Personales!',
+              prText,
+              [{ text: 'Genial!', onPress: () => router.replace('/' as never) }]
+            );
+          } else {
+            router.replace('/' as never);
+          }
         },
       },
     ]);
@@ -130,16 +146,16 @@ export default function ActiveWorkout() {
   };
 
   const handleAddTime = (extra: number) => {
-    if (!session.restTimerStartedAt) return;
     const newDuration = session.restDurationSeconds + extra;
     startRestTimer(newDuration);
   };
 
   return (
     <View style={styles.screen}>
+      {/* Top bar */}
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
-          <Text style={styles.routineName}>{session.routineName}</Text>
+          <Text style={styles.routineName} numberOfLines={1}>{session.routineName}</Text>
           <Text style={styles.elapsedTime}>{formatDuration(elapsed)}</Text>
         </View>
         <Pressable style={styles.discardBtn} onPress={handleDiscard}>
@@ -147,6 +163,7 @@ export default function ActiveWorkout() {
         </Pressable>
       </View>
 
+      {/* Exercise tabs */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -166,10 +183,7 @@ export default function ActiveWorkout() {
               ]}
             >
               <Text
-                style={[
-                  styles.exerciseTabText,
-                  active && styles.exerciseTabTextActive,
-                ]}
+                style={[styles.exerciseTabText, active && styles.exerciseTabTextActive]}
                 numberOfLines={1}
               >
                 {ex.name}
@@ -178,6 +192,30 @@ export default function ActiveWorkout() {
           );
         })}
       </ScrollView>
+
+      {/* Rest timer duration selector */}
+      <View style={styles.restDurationRow}>
+        <Text style={styles.restDurationLabel}>Descanso:</Text>
+        {REST_OPTIONS.map((opt) => (
+          <Pressable
+            key={opt.value}
+            onPress={() => setRestDuration(opt.value)}
+            style={[
+              styles.restDurationPill,
+              session.restDurationSeconds === opt.value && styles.restDurationPillActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.restDurationPillText,
+                session.restDurationSeconds === opt.value && styles.restDurationPillTextActive,
+              ]}
+            >
+              {opt.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
 
       <ScrollView
         style={styles.scroll}
@@ -197,25 +235,20 @@ export default function ActiveWorkout() {
           exercise={currentEx}
           exerciseIndex={session.currentExerciseIndex}
           lastSession={lastSessionExercises[currentEx.libraryId]}
-          onUpdateSet={(si, data) =>
-            updateSet(session.currentExerciseIndex, si, data)
-          }
-          onCompleteSet={(si) =>
-            updateSet(session.currentExerciseIndex, si, { completed: true })
-          }
+          onUpdateSet={(si, data) => updateSet(session.currentExerciseIndex, si, data)}
+          onCompleteSet={(si) => updateSet(session.currentExerciseIndex, si, { completed: true })}
           onAddSet={() => addSet(session.currentExerciseIndex)}
           onStartTimer={() => startRestTimer(session.restDurationSeconds)}
         />
 
+        {/* Navigation */}
         <View style={styles.navRow}>
           <Pressable
             style={[
               styles.navBtn,
               session.currentExerciseIndex === 0 && styles.navBtnDisabled,
             ]}
-            onPress={() =>
-              setCurrentExercise(Math.max(0, session.currentExerciseIndex - 1))
-            }
+            onPress={() => setCurrentExercise(Math.max(0, session.currentExerciseIndex - 1))}
             disabled={session.currentExerciseIndex === 0}
           >
             <Text style={styles.navBtnText}>← Anterior</Text>
@@ -224,17 +257,14 @@ export default function ActiveWorkout() {
           {session.currentExerciseIndex < session.exercises.length - 1 ? (
             <Pressable
               style={styles.navBtn}
-              onPress={() =>
-                setCurrentExercise(session.currentExerciseIndex + 1)
-              }
+              onPress={() => setCurrentExercise(session.currentExerciseIndex + 1)}
             >
               <Text style={styles.navBtnText}>Siguiente →</Text>
             </Pressable>
           ) : (
             <Pressable style={[styles.navBtn, styles.navBtnFinish]} onPress={handleFinish}>
-              <Text style={[styles.navBtnText, { color: twColors.background }]}>
-                Finalizar
-              </Text>
+              <Trophy size={14} color={twColors.background} />
+              <Text style={[styles.navBtnText, { color: twColors.background }]}>Finalizar</Text>
             </Pressable>
           )}
         </View>
@@ -255,7 +285,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: borderWidth.default,
     borderBottomColor: twColors.border,
   },
-  topBarLeft: { gap: 2 },
+  topBarLeft: { flex: 1, gap: 2, marginRight: 12 },
   routineName: { fontSize: 16, fontFamily: twFonts.bold, color: twColors.foreground },
   elapsedTime: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.primary },
   discardBtn: {
@@ -281,13 +311,38 @@ const styles = StyleSheet.create({
     maxWidth: 150,
   },
   exerciseTabActive: { borderColor: twColors.primary, backgroundColor: twColors.primary + '20' },
-  exerciseTabDone: { backgroundColor: twColors.primary + '40' },
-  exerciseTabText: {
-    fontSize: 12,
+  exerciseTabDone: { backgroundColor: twColors.primary + '40', borderColor: twColors.primary + '60' },
+  exerciseTabText: { fontSize: 12, fontFamily: twFonts.medium, color: twColors.muted },
+  exerciseTabTextActive: { color: twColors.primary },
+  restDurationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 6,
+    borderBottomWidth: borderWidth.default,
+    borderBottomColor: twColors.border,
+  },
+  restDurationLabel: {
+    fontSize: 11,
     fontFamily: twFonts.medium,
     color: twColors.muted,
+    marginRight: 2,
   },
-  exerciseTabTextActive: { color: twColors.primary },
+  restDurationPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: twColors.card2,
+    borderWidth: borderWidth.default,
+    borderColor: 'transparent',
+  },
+  restDurationPillActive: {
+    backgroundColor: twColors.primary + '26',
+    borderColor: twColors.primary,
+  },
+  restDurationPillText: { fontSize: 11, fontFamily: twFonts.medium, color: twColors.muted },
+  restDurationPillTextActive: { color: twColors.primary },
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 20,
@@ -295,19 +350,18 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     gap: 16,
   },
-  navRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
+  navRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
   navBtn: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     paddingVertical: 13,
     borderRadius: twRadius.sm,
     backgroundColor: twColors.card2,
     borderWidth: borderWidth.default,
     borderColor: twColors.border,
-    alignItems: 'center',
   },
   navBtnDisabled: { opacity: 0.35 },
   navBtnFinish: { backgroundColor: twColors.primary, borderColor: twColors.primary },

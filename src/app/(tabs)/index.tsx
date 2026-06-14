@@ -1,10 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Bell, Flame, TrendingUp, Trophy, Zap } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   FadeInUp,
@@ -15,8 +14,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import HydrationTracker from '@/components/HydrationTracker';
 import WorkoutCard from '@/components/WorkoutCard';
-import { getRoutines } from '@/services/storage';
+import { getHydrationGlasses, getRoutines, getSessions, setHydrationGlasses } from '@/services/storage';
 import { Routine } from '@/types';
+import { calculateStreak, countWeekSessions } from '@/utils/workout';
 import {
   borderWidth,
   twColors,
@@ -24,37 +24,14 @@ import {
   twRadius,
 } from '@/constants/tailwind-runtime-theme';
 
-const stats = [
-  { icon: Flame, label: 'Calorías', value: '1,240', color: twColors.destructive },
-  { icon: TrendingUp, label: 'Racha', value: '12 días', color: twColors.primary },
-  { icon: Trophy, label: 'PRs', value: '3', color: twColors.warning },
-];
-
 const Index = () => {
   const [glasses, setGlasses] = useState(0);
   const [quickHovered, setQuickHovered] = useState(false);
   const [firstRoutine, setFirstRoutine] = useState<Routine | null>(null);
+  const [streak, setStreak] = useState(0);
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [weekSessions, setWeekSessions] = useState(0);
   const pulse = useSharedValue(0);
-
-  useEffect(() => {
-    AsyncStorage.getItem('hydration_glasses').then((val) => {
-      if (val !== null) setGlasses(Number(val));
-    });
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      getRoutines().then((r) => setFirstRoutine(r[0] ?? null));
-    }, [])
-  );
-
-  const handleQuickStart = () => {
-    if (firstRoutine) {
-      router.push(`/routine/${firstRoutine.id}` as never);
-    } else {
-      router.push('/train' as never);
-    }
-  };
 
   useEffect(() => {
     pulse.value = withRepeat(
@@ -69,17 +46,43 @@ const Index = () => {
     opacity: 0.95 + pulse.value * 0.05,
   }));
 
+  useFocusEffect(
+    useCallback(() => {
+      getHydrationGlasses().then(setGlasses);
+      getRoutines().then((r) => setFirstRoutine(r[0] ?? null));
+      getSessions().then((sessions) => {
+        setStreak(calculateStreak(sessions));
+        setTotalSessions(sessions.length);
+        setWeekSessions(countWeekSessions(sessions));
+      });
+    }, [])
+  );
+
   const handleAddGlass = () => {
     const next = Math.min(glasses + 1, 8);
     setGlasses(next);
-    AsyncStorage.setItem('hydration_glasses', String(next));
+    setHydrationGlasses(next);
   };
 
   const handleRemoveGlass = () => {
     const next = Math.max(glasses - 1, 0);
     setGlasses(next);
-    AsyncStorage.setItem('hydration_glasses', String(next));
+    setHydrationGlasses(next);
   };
+
+  const handleQuickStart = () => {
+    if (firstRoutine) {
+      router.push(`/routine/${firstRoutine.id}` as never);
+    } else {
+      router.push('/train' as never);
+    }
+  };
+
+  const stats = [
+    { icon: Flame, label: 'Entrenos', value: String(totalSessions), color: twColors.destructive },
+    { icon: TrendingUp, label: 'Racha', value: streak > 0 ? `${streak}d` : '—', color: twColors.primary },
+    { icon: Trophy, label: 'Esta semana', value: String(weekSessions), color: twColors.warning },
+  ];
 
   return (
     <View style={styles.screen}>
@@ -97,9 +100,11 @@ const Index = () => {
           <View style={styles.heroOverlay} />
           <View style={styles.heroBottom}>
             <View />
-            <Pressable style={styles.bellButton}>
+            <Pressable
+              style={styles.bellButton}
+              onPress={() => Alert.alert('Notificaciones', 'Próximamente.')}
+            >
               <Bell size={18} color={twColors.foreground} />
-              <View style={styles.notificationDot} />
             </Pressable>
           </View>
         </View>
@@ -199,15 +204,6 @@ const styles = StyleSheet.create({
     backgroundColor: twColors.card,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: twColors.primary,
   },
   content: {
     width: '100%',

@@ -4,7 +4,7 @@ import {
     twFonts,
     twRadius,
 } from "@/constants/tailwind-runtime-theme";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { ArrowLeft, ChevronRight, Dumbbell } from "lucide-react-native";
 import React from "react";
 import {
@@ -415,12 +415,10 @@ export default function Statistics() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          <Link href="/profile" asChild>
-            <Pressable style={styles.backButton}>
-              <ArrowLeft size={18} color={twColors.primary} />
-              <Text style={styles.backText}>Volver</Text>
-            </Pressable>
-          </Link>
+          <Pressable style={styles.backButton} onPress={() => router.back()}>
+            <ArrowLeft size={18} color={twColors.primary} />
+            <Text style={styles.backText}>Volver</Text>
+          </Pressable>
           <Animated.View
             entering={FadeInUp.duration(500)}
             style={styles.header}

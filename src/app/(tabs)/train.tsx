@@ -5,8 +5,9 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import WorkoutCard from '@/components/WorkoutCard';
-import { getRoutines } from '@/services/storage';
+import { getRoutines, getSessions } from '@/services/storage';
 import { Routine } from '@/types';
+import { getWeekTrainingDays } from '@/utils/workout';
 import {
   borderWidth,
   twColors,
@@ -23,11 +24,15 @@ function getTodayDayIndex(): number {
 
 const Train = () => {
   const [routines, setRoutines] = useState<Routine[]>([]);
+  const [trainedDays, setTrainedDays] = useState<number[]>([]);
   const todayIndex = getTodayDayIndex();
 
   useFocusEffect(
     useCallback(() => {
       getRoutines().then(setRoutines);
+      getSessions().then((sessions) => {
+        setTrainedDays(getWeekTrainingDays(sessions));
+      });
     }, [])
   );
 
@@ -53,14 +58,33 @@ const Train = () => {
             <View style={styles.calendarHeader}>
               <Calendar size={14} color={twColors.primary} />
               <Text style={styles.calendarTitle}>Esta semana</Text>
+              <Text style={styles.calendarSub}>
+                {trainedDays.length} día{trainedDays.length !== 1 ? 's' : ''}
+              </Text>
             </View>
             <View style={styles.weekRow}>
               {weekDays.map((d, i) => {
+                const trained = trainedDays.includes(i);
                 const isToday = i === todayIndex;
                 return (
-                  <View key={d} style={[styles.dayCell, isToday && styles.dayCellActive]}>
-                    <Text style={[styles.dayText, isToday && styles.dayTextActive]}>{d}</Text>
-                    {isToday && <View style={styles.dayDot} />}
+                  <View
+                    key={d}
+                    style={[
+                      styles.dayCell,
+                      trained && styles.dayCellTrained,
+                      isToday && styles.dayCellToday,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.dayText,
+                        trained && styles.dayTextTrained,
+                        isToday && styles.dayTextToday,
+                      ]}
+                    >
+                      {d}
+                    </Text>
+                    {trained && <View style={styles.dayDot} />}
                   </View>
                 );
               })}
@@ -134,13 +158,26 @@ const styles = StyleSheet.create({
     borderRadius: twRadius.md,
     padding: 16,
   },
-  calendarHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
   calendarTitle: { fontSize: 12, fontFamily: twFonts.bold, color: twColors.foreground },
+  calendarSub: {
+    marginLeft: 'auto' as any,
+    fontSize: 11,
+    fontFamily: twFonts.regular,
+    color: twColors.muted,
+  },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 4 },
   dayCell: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: twRadius.sm },
-  dayCellActive: { backgroundColor: twColors.primary + '26' },
+  dayCellTrained: { backgroundColor: twColors.primary + '20' },
+  dayCellToday: { backgroundColor: twColors.primary + '30', borderWidth: borderWidth.default, borderColor: twColors.primary },
   dayText: { fontSize: 12, fontFamily: twFonts.medium, color: twColors.muted },
-  dayTextActive: { color: twColors.primary },
+  dayTextTrained: { color: twColors.primary },
+  dayTextToday: { color: twColors.primary, fontFamily: twFonts.bold },
   dayDot: { marginTop: 4, width: 5, height: 5, borderRadius: 999, backgroundColor: twColors.primary },
   sectionTitle: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.foreground, marginBottom: -8 },
   routinesList: { gap: 12 },

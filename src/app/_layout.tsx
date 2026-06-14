@@ -13,6 +13,7 @@ import "../global.css";
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { WorkoutProvider } from "@/context/WorkoutContext";
+import { seedDefaultRoutinesIfEmpty } from "@/services/storage";
 import {
   DarkTheme,
   DefaultTheme,
@@ -35,6 +36,7 @@ function InitialLayout() {
   useEffect(() => {
     if (fontsLoaded) {
       SplashScreen.hideAsync();
+      seedDefaultRoutinesIfEmpty();
     }
   }, [fontsLoaded]);
 

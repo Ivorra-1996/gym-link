@@ -86,9 +86,11 @@ export default function HistoryScreen() {
                       {s.exercises.length} ejercicios
                     </Text>
                   </View>
-                  <Text style={styles.volumeText}>
-                    {Math.round(s.totalVolume).toLocaleString('es-AR')} kg vol.
-                  </Text>
+                  <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                    <Text style={styles.volumeText}>
+                      {Math.round(s.totalVolume).toLocaleString('es-AR')} kg vol.
+                    </Text>
+                  </View>
                 </View>
               </Pressable>
             </Animated.View>
@@ -148,7 +150,6 @@ const styles = StyleSheet.create({
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { fontSize: 12, fontFamily: twFonts.regular, color: twColors.muted },
   volumeText: {
-    marginLeft: 'auto' as any,
     fontSize: 12,
     fontFamily: twFonts.bold,
     color: twColors.primary,

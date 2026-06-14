@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { Href, router } from 'expo-router';
 import {
   Calendar,
@@ -10,10 +11,12 @@ import {
   User,
   Zap,
 } from 'lucide-react-native';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
+import { getSessions } from '@/services/storage';
+import { calculateStreak } from '@/utils/workout';
 import {
   borderWidth,
   twColors,
@@ -22,16 +25,10 @@ import {
 } from '@/constants/tailwind-runtime-theme';
 
 const achievements = [
-  { icon: Flame, label: 'Racha 12 días' },
-  { icon: Trophy, label: '100 entrenos' },
-  { icon: Zap, label: 'PR Sentadilla' },
+  { icon: Flame, label: 'Racha activa' },
+  { icon: Trophy, label: 'Primer entreno' },
+  { icon: Zap, label: 'PR personal' },
   { icon: Calendar, label: 'Meta mensual' },
-];
-
-const stats = [
-  { value: '48', label: 'Entrenos' },
-  { value: '12', label: 'Racha' },
-  { value: '156', label: 'Conexiones' },
 ];
 
 const menuItems = [
@@ -48,7 +45,24 @@ const menuItems = [
 
 const Profile = () => {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [streak, setStreak] = useState(0);
   const { user, signOut } = useAuth();
+
+  useFocusEffect(
+    useCallback(() => {
+      getSessions().then((sessions) => {
+        setTotalSessions(sessions.length);
+        setStreak(calculateStreak(sessions));
+      });
+    }, [])
+  );
+
+  const stats = [
+    { value: String(totalSessions), label: 'Entrenos' },
+    { value: streak > 0 ? String(streak) : '0', label: 'Racha' },
+    { value: '—', label: 'Conexiones' },
+  ];
 
   return (
     <View style={styles.screen}>
@@ -64,7 +78,10 @@ const Profile = () => {
               <Pressable style={styles.settingsButton} onPress={signOut}>
                 <LogOut size={16} color={twColors.muted} />
               </Pressable>
-              <Pressable style={styles.settingsButton}>
+              <Pressable
+                style={styles.settingsButton}
+                onPress={() => Alert.alert('Configuración', 'Próximamente.')}
+              >
                 <Settings size={16} color={twColors.foreground} />
               </Pressable>
             </View>
@@ -96,7 +113,9 @@ const Profile = () => {
           <Animated.View entering={FadeInUp.delay(120)}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={styles.sectionTitle}>Logros recientes</Text>
-              <Text style={styles.achievementLabel}>Ver más</Text>
+              <Pressable onPress={() => Alert.alert('Logros', 'Próximamente.')}>
+                <Text style={styles.achievementLabel}>Ver más</Text>
+              </Pressable>
             </View>
             <ScrollView
               horizontal
