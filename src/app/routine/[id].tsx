@@ -1,100 +1,92 @@
-import { Image } from "expo-image";
-import { Link, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, SquarePen } from "lucide-react-native";
-import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { router, useLocalSearchParams } from 'expo-router';
+import { ArrowLeft, Play, SquarePen } from 'lucide-react-native';
+import { useCallback, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { getRoutines } from '@/services/storage';
+import { useWorkout } from '@/context/WorkoutContext';
+import { Routine, ActiveSessionState, CompletedSet } from '@/types';
 import {
   borderWidth,
   twColors,
   twFonts,
   twRadius,
-} from "../../constants/tailwind-runtime-theme";
-
-("use client");
-
-interface Exercise {
-  id: string;
-  name: string;
-  sets: number;
-  reps: number;
-  weight: string;
-}
-
-interface Routine {
-  id: string;
-  name: string;
-  description: string;
-  exercises: Exercise[];
-  difficulty: "principiante" | "intermedia" | "avanzado";
-}
+} from '@/constants/tailwind-runtime-theme';
 
 export default function RoutinePage() {
-  const params = useLocalSearchParams();
-  const routineId = params.id as string;
+  const { id } = useLocalSearchParams<{ id: string }>();
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [loading, setLoading] = useState(true);
+  const { session, startSession } = useWorkout();
 
-  useEffect(() => {
-    // Simulación de fetch - reemplazar con tu API real
-    const mockRoutine: Routine = {
-      id: routineId,
-      name: "Rutina de Pecho y Tríceps",
-      description: "Rutina enfocada en desarrollo de pecho y tríceps",
-      difficulty: "intermedia",
-      exercises: [
-        {
-          id: "1",
-          name: "Press de Banca",
-          sets: 4,
-          reps: 8,
-          weight: "80kg",
-        },
-        {
-          id: "2",
-          name: "Flexiones",
-          sets: 3,
-          reps: 12,
-          weight: "Peso corporal",
-        },
-        {
-          id: "3",
-          name: "Fondos",
-          sets: 3,
-          reps: 10,
-          weight: "Peso corporal",
-        },
-        {
-          id: "4",
-          name: "Press de Tríceps",
-          sets: 4,
-          reps: 10,
-          weight: "40kg",
-        },
-        {
-          id: "5",
-          name: "Extensiones de Tríceps",
-          sets: 3,
-          reps: 12,
-          weight: "30kg",
-        },
-      ],
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      getRoutines().then((all) => {
+        setRoutine(all.find((r) => r.id === id) ?? null);
+        setLoading(false);
+      });
+    }, [id])
+  );
+
+  const handleStart = () => {
+    if (!routine) return;
+    if (session) {
+      Alert.alert(
+        'Sesión en progreso',
+        'Ya tenés un entrenamiento activo. ¿Querés descartarlo y empezar este?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Descartar y empezar', style: 'destructive', onPress: launchSession },
+        ]
+      );
+    } else {
+      launchSession();
+    }
+  };
+
+  const launchSession = () => {
+    if (!routine) return;
+    const initialSession: ActiveSessionState = {
+      routineId: routine.id,
+      routineName: routine.name,
+      startedAt: Date.now(),
+      currentExerciseIndex: 0,
+      restTimerStartedAt: null,
+      restDurationSeconds: 90,
+      exercises: routine.exercises.map((ex) => ({
+        libraryId: ex.libraryId,
+        name: ex.name,
+        targetSets: ex.sets,
+        targetReps: ex.reps,
+        sets: Array.from({ length: ex.sets }, (): CompletedSet => ({
+          reps: ex.reps,
+          weight: ex.weight,
+          completed: false,
+        })),
+      })),
     };
-    setRoutine(mockRoutine);
-    setLoading(false);
-  }, [routineId]);
+    startSession(initialSession);
+    router.push('/workout/active' as never);
+  };
 
-  if (loading)
+  if (loading) {
     return (
       <View style={styles.statusContainer}>
         <Text style={styles.statusText}>Cargando...</Text>
       </View>
     );
-  if (!routine)
+  }
+  if (!routine) {
     return (
       <View style={styles.statusContainer}>
         <Text style={styles.statusText}>Rutina no encontrada</Text>
+        <Pressable onPress={() => router.back()}>
+          <Text style={[styles.statusText, { color: twColors.primary, marginTop: 12 }]}>Volver</Text>
+        </Pressable>
       </View>
     );
+  }
 
   return (
     <View style={styles.screen}>
@@ -104,219 +96,153 @@ export default function RoutinePage() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          <Link href="/train" asChild>
-            <Pressable style={styles.backButton}>
+          <View style={styles.header}>
+            <Pressable style={styles.backButton} onPress={() => router.back()}>
               <ArrowLeft size={18} color={twColors.primary} />
               <Text style={styles.backText}>Volver</Text>
             </Pressable>
-          </Link>
+            <Pressable
+              style={styles.editBtn}
+              onPress={() => router.push(`/routine/create?routineId=${routine.id}` as never)}
+            >
+              <SquarePen size={16} color={twColors.foreground} />
+            </Pressable>
+          </View>
 
-          <Text style={styles.title}>{routine.name}</Text>
-          {/* <Text style={styles.description}>{routine.description}</Text>
-          <Text style={styles.difficultyBadge}>{routine.difficulty}</Text> */}
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{routine.name}</Text>
+            <Text style={styles.subtitle}>{routine.muscleGroup}</Text>
+          </View>
 
           <View>
             <Text style={styles.exerciseListTitle}>
-              Ejercicios
-              <Text style={styles.exerciseCant}>
-                <Text> </Text>({routine.exercises.length})
-              </Text>
+              Ejercicios{' '}
+              <Text style={styles.exerciseCant}>({routine.exercises.length})</Text>
             </Text>
             <View style={styles.exerciseList}>
-              {routine.exercises.map((exercise) => (
-                <View key={exercise.id} style={styles.exerciseCard}>
+              {routine.exercises.map((exercise, i) => (
+                <View key={`${exercise.libraryId}_${i}`} style={styles.exerciseCard}>
+                  <Text style={styles.exerciseName}>{exercise.name}</Text>
                   <View style={styles.exerciseMetaRow}>
-                    <Text style={styles.exerciseName}>{exercise.name}</Text>
-                    <SquarePen
-                      size={18}
-                      color={twColors.primary}
-                      style={{ cursor: "pointer" }}
-                    />
-                  </View>
-                  <View style={styles.exerciseMetaRow}>
-                    <View style={styles.exerciseMetaColum}>
-                      <View style={styles.exerciseMetaItem}>
-                        <Text style={styles.exerciseMetaLabel}>Series</Text>
-                        <Text style={styles.exerciseMetaValue}>
-                          {exercise.sets}
-                        </Text>
-                      </View>
-                      <View style={styles.exerciseMetaItem}>
-                        <Text style={styles.exerciseMetaLabel}>
-                          Repeticiones
-                        </Text>
-                        <Text style={styles.exerciseMetaValue}>
-                          {exercise.reps}
-                        </Text>
-                      </View>
-                      <View style={styles.exerciseMetaItem}>
-                        <Text style={styles.exerciseMetaLabel}>Peso</Text>
-                        <Text style={styles.exerciseMetaValue}>
-                          {exercise.weight}
-                        </Text>
-                      </View>
+                    <View style={styles.exerciseMetaItem}>
+                      <Text style={styles.exerciseMetaLabel}>Series</Text>
+                      <Text style={styles.exerciseMetaValue}>{exercise.sets}</Text>
                     </View>
-                    <Image
-                      style={styles.image}
-                      source={require("@/assets/images/biceps/Cable-Curl-m_Upper-Arms_360.gif")}
-                    />
+                    <View style={styles.exerciseMetaItem}>
+                      <Text style={styles.exerciseMetaLabel}>Repeticiones</Text>
+                      <Text style={styles.exerciseMetaValue}>{exercise.reps}</Text>
+                    </View>
+                    <View style={styles.exerciseMetaItem}>
+                      <Text style={styles.exerciseMetaLabel}>Peso</Text>
+                      <Text style={styles.exerciseMetaValue}>
+                        {exercise.weight > 0 ? `${exercise.weight} kg` : 'PC'}
+                      </Text>
+                    </View>
                   </View>
-                  <Text style={styles.exerciseMetaLabelDescription}>
-                    Manténgase erguido con los codos cerca del torso y la parte
-                    superior de los brazos estacionarios; sólo los antebrazos
-                    deben moverse. Controla el peso, especialmente en el
-                    descenso, y coordina la respiración (exhala mientras haces
-                    curling, inhala mientras bajas).
-                  </Text>
                 </View>
               ))}
             </View>
           </View>
         </View>
       </ScrollView>
+
+      <View style={styles.footer}>
+        <Pressable style={styles.startButton} onPress={handleStart}>
+          <Play size={18} color={twColors.background} />
+          <Text style={styles.startButtonText}>Iniciar Entrenamiento</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: twColors.background,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    alignItems: "center",
-    paddingBottom: 24,
-  },
+  screen: { flex: 1, backgroundColor: twColors.background },
+  scroll: { flex: 1 },
+  scrollContent: { alignItems: 'center', paddingBottom: 120 },
   content: {
+    width: '100%',
     maxWidth: 512,
     paddingHorizontal: 20,
     paddingTop: 56,
-    paddingBottom: 96,
     gap: 20,
   },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    alignSelf: "flex-start",
-    marginBottom: 4,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  backText: {
-    fontSize: 13,
-    fontFamily: twFonts.medium,
-    color: twColors.primary,
+  backButton: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  backText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.primary },
+  editBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    backgroundColor: twColors.card2,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  titleRow: { gap: 4 },
+  title: { fontSize: 22, fontFamily: twFonts.bold, color: twColors.foreground },
+  subtitle: { fontSize: 13, fontFamily: twFonts.regular, color: twColors.muted },
   statusContainer: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: twColors.background,
   },
-  statusText: {
-    fontSize: 16,
-    fontFamily: twFonts.medium,
-    color: twColors.foreground,
-  },
-  backLink: {
-    color: twColors.primary,
-    fontSize: 14,
-    fontFamily: twFonts.medium,
-  },
-  title: {
-    fontSize: 20,
-    fontFamily: twFonts.bold,
-    color: twColors.foreground,
-  },
-  description: {
-    fontSize: 14,
-    fontFamily: twFonts.regular,
-    color: twColors.muted,
-  },
-  difficultyBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: twColors.primary,
-    color: twColors.card,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: twRadius.sm,
-    fontSize: 12,
-    fontFamily: twFonts.medium,
-    textTransform: "capitalize",
-  },
-  exerciseList: {
-    width: "100%",
-    gap: 16,
-  },
-  exerciseListTitle: {
-    fontSize: 22,
-    fontFamily: twFonts.bold,
-    color: twColors.foreground,
-    marginBottom: 8,
-  },
-  exerciseCant: {
-    fontSize: 16,
-    fontFamily: twFonts.bold,
-    color: twColors.foreground,
-    marginBottom: 8,
-  },
+  statusText: { fontSize: 16, fontFamily: twFonts.medium, color: twColors.foreground },
+  exerciseListTitle: { fontSize: 16, fontFamily: twFonts.bold, color: twColors.foreground, marginBottom: 12 },
+  exerciseCant: { fontSize: 14, color: twColors.muted },
+  exerciseList: { gap: 12 },
   exerciseCard: {
     backgroundColor: twColors.card2,
     borderWidth: borderWidth.default,
     borderColor: twColors.border,
     borderRadius: twRadius.sm,
     padding: 16,
-    gap: 8,
+    gap: 12,
   },
   exerciseName: {
     fontSize: 14,
     fontFamily: twFonts.bold,
     color: twColors.primary,
-    textTransform: "uppercase",
-  },
-  image: {
-    width: 200,
-    height: 200,
-    borderRadius: twRadius.sm,
-  },
-  exerciseMetaColum: {
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "flex-start",
-    justifyContent: "center",
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   exerciseMetaRow: {
-    width: "100%",
-    display: "flex",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    gap: 8,
   },
-  exerciseMetaItem: {
-    flex: 1,
-    display: "flex",
-    alignItems: "flex-start",
-    flexDirection: "column",
-    justifyContent: "flex-start",
-  },
-  exerciseMetaLabel: {
-    fontSize: 12,
-    fontFamily: twFonts.regular,
-    color: twColors.accent,
-  },
-  exerciseMetaLabelDescription: {
-    fontSize: 12,
-    fontFamily: twFonts.regular,
-    color: twColors.muted,
-  },
+  exerciseMetaItem: { flex: 1, alignItems: 'center' },
+  exerciseMetaLabel: { fontSize: 10, fontFamily: twFonts.regular, color: twColors.muted },
   exerciseMetaValue: {
-    fontSize: 28,
-    fontFamily: twFonts.medium,
+    fontSize: 24,
+    fontFamily: twFonts.bold,
     color: twColors.foreground,
     marginTop: 2,
   },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: twColors.background,
+    borderTopWidth: borderWidth.default,
+    borderTopColor: twColors.border,
+  },
+  startButton: {
+    backgroundColor: twColors.primary,
+    borderRadius: twRadius.sm,
+    paddingVertical: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  startButtonText: { fontSize: 16, fontFamily: twFonts.bold, color: twColors.background },
 });

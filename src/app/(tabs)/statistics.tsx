@@ -328,7 +328,7 @@ function RadarChart() {
         </Svg>
 
         <View style={styles.labelsWrap}>
-          {scaleTicks.map((tick, index) => {
+          {scaleTicks.map((tick) => {
             const y =
               tick === 0 ? center - 8 : center - (maxRadius * tick) / 100 - 8;
             return (
@@ -461,17 +461,9 @@ export default function Statistics() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: twColors.background,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    alignItems: "center",
-    paddingBottom: 24,
-  },
+  screen: { flex: 1, backgroundColor: twColors.background },
+  scroll: { flex: 1 },
+  scrollContent: { alignItems: "center", paddingBottom: 24 },
   content: {
     width: "100%",
     maxWidth: 512,
@@ -487,14 +479,8 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     marginBottom: 4,
   },
-  backText: {
-    fontSize: 13,
-    fontFamily: twFonts.medium,
-    color: twColors.primary,
-  },
-  header: {
-    alignItems: "center",
-  },
+  backText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.primary },
+  header: { alignItems: "center" },
   badge: {
     flexDirection: "row",
     alignItems: "center",
@@ -505,11 +491,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     marginBottom: 16,
   },
-  badgeText: {
-    fontSize: 12,
-    fontFamily: twFonts.medium,
-    color: twColors.primary,
-  },
+  badgeText: { fontSize: 12, fontFamily: twFonts.medium, color: twColors.primary },
   title: {
     fontSize: 28,
     lineHeight: 34,
@@ -518,12 +500,7 @@ const styles = StyleSheet.create({
     color: twColors.foreground,
     marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 13,
-    fontFamily: twFonts.regular,
-    color: twColors.muted,
-    textAlign: "center",
-  },
+  subtitle: { fontSize: 13, fontFamily: twFonts.regular, color: twColors.muted, textAlign: "center" },
   chartCard: {
     backgroundColor: twColors.card,
     borderWidth: borderWidth.default,
@@ -532,17 +509,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 16,
   },
-  chartWrapper: {
-    width: "100%",
-    height: 350,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  labelsWrap: {
-    position: "absolute",
-    width: size,
-    height: size,
-  },
+  chartWrapper: { width: "100%", height: 350, alignItems: "center", justifyContent: "center" },
+  labelsWrap: { position: "absolute", width: size, height: size },
   axisLabel: {
     position: "absolute",
     fontSize: 11,
@@ -565,81 +533,21 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
   },
-  progressRingWrap: {
-    width: 80,
-    height: 80,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  progressCenter: {
-    position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  progressValue: {
-    fontSize: 14,
-    fontFamily: twFonts.bold,
-    color: twColors.foreground,
-  },
-  progressTitle: {
-    fontSize: 13,
-    fontFamily: twFonts.bold,
-    color: twColors.foreground,
-  },
-  progressSubtitle: {
-    fontSize: 11,
-    fontFamily: twFonts.regular,
-    color: twColors.muted,
-  },
-  legendRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 14,
-    marginTop: -4,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-  },
-  legendText: {
-    fontSize: 11,
-    fontFamily: twFonts.medium,
-    color: twColors.mutedForeground,
-  },
-  monthsWrap: {
-    marginTop: 14,
-    flexDirection: "row",
-    justifyContent: "center",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  monthButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: twRadius.sm,
-    backgroundColor: twColors.secondary,
-  },
-  monthButtonActive: {
-    backgroundColor: twColors.primary,
-  },
-  monthButtonText: {
-    fontSize: 12,
-    fontFamily: twFonts.medium,
-    color: twColors.secondaryForeground,
-  },
-  monthButtonTextActive: {
-    color: twColors.primaryForeground,
-  },
-  ctaWrap: {
-    alignItems: "center",
-  },
+  progressRingWrap: { width: 80, height: 80, alignItems: "center", justifyContent: "center" },
+  progressCenter: { position: "absolute", alignItems: "center", justifyContent: "center" },
+  progressValue: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.foreground },
+  progressTitle: { fontSize: 13, fontFamily: twFonts.bold, color: twColors.foreground },
+  progressSubtitle: { fontSize: 11, fontFamily: twFonts.regular, color: twColors.muted },
+  legendRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 14, marginTop: -4 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  legendDot: { width: 8, height: 8, borderRadius: 999 },
+  legendText: { fontSize: 11, fontFamily: twFonts.medium, color: twColors.mutedForeground },
+  monthsWrap: { marginTop: 14, flexDirection: "row", justifyContent: "center", flexWrap: "wrap", gap: 8 },
+  monthButton: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: twRadius.sm, backgroundColor: twColors.secondary },
+  monthButtonActive: { backgroundColor: twColors.primary },
+  monthButtonText: { fontSize: 12, fontFamily: twFonts.medium, color: twColors.secondaryForeground },
+  monthButtonTextActive: { color: twColors.primaryForeground },
+  ctaWrap: { alignItems: "center" },
   ctaButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -651,9 +559,5 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     minWidth: 220,
   },
-  ctaText: {
-    fontSize: 14,
-    fontFamily: twFonts.medium,
-    color: twColors.primaryForeground,
-  },
+  ctaText: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.primaryForeground },
 });

@@ -1,52 +1,54 @@
-import { Href, router } from "expo-router";
+import { Href, router } from 'expo-router';
 import {
   Calendar,
   ChevronRight,
   Flame,
+  LogOut,
   Settings,
   TrendingUp,
   Trophy,
   User,
   Zap,
-} from "lucide-react-native";
-import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+} from 'lucide-react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { useAuth } from '@/context/AuthContext';
 import {
   borderWidth,
   twColors,
   twFonts,
   twRadius,
-} from "../constants/tailwind-runtime-theme";
+} from '@/constants/tailwind-runtime-theme';
 
 const achievements = [
-  { icon: Flame, label: "Racha 12 días" },
-  { icon: Trophy, label: "100 entrenos" },
-  { icon: Zap, label: "PR Sentadilla" },
-  { icon: Calendar, label: "Meta mensual" },
+  { icon: Flame, label: 'Racha 12 días' },
+  { icon: Trophy, label: '100 entrenos' },
+  { icon: Zap, label: 'PR Sentadilla' },
+  { icon: Calendar, label: 'Meta mensual' },
 ];
 
 const stats = [
-  { value: "48", label: "Entrenos" },
-  { value: "12", label: "Racha" },
-  { value: "156", label: "Conexiones" },
+  { value: '48', label: 'Entrenos' },
+  { value: '12', label: 'Racha' },
+  { value: '156', label: 'Conexiones' },
 ];
 
 const menuItems = [
-  // { icon: Dumbbell, label: "Mis Rutinas", count: "5" },
   {
     icon: TrendingUp,
-    label: "Estadísticas mensual",
-    count: "",
-    href: "/statistics",
+    label: 'Estadísticas mensual',
+    count: '',
+    href: '/statistics',
   },
-  { icon: Calendar, label: "Historial", count: "48", href: "/history" },
-  // { icon: Award, label: "Logros", count: "12" },
-  // { icon: UploadCloud, label: "Progreso", count: "" },
+  { icon: Calendar, label: 'Historial de entrenos', count: '', href: '/history' },
+  { icon: Zap, label: 'Calculadora 1RM', count: '', href: '/tools/calculator' },
+  { icon: Flame, label: 'Peso Corporal', count: '', href: '/tools/bodyweight' },
 ];
 
 const Profile = () => {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const { user, signOut } = useAuth();
 
   return (
     <View style={styles.screen}>
@@ -56,27 +58,25 @@ const Profile = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Perfil</Text>
-            <Pressable style={styles.settingsButton}>
-              <Settings size={16} color={twColors.foreground} />
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable style={styles.settingsButton} onPress={signOut}>
+                <LogOut size={16} color={twColors.muted} />
+              </Pressable>
+              <Pressable style={styles.settingsButton}>
+                <Settings size={16} color={twColors.foreground} />
+              </Pressable>
+            </View>
           </View>
 
-          {/* Profile Card */}
-          <Animated.View
-            entering={FadeInUp.delay(50)}
-            style={styles.profileCard}
-          >
+          <Animated.View entering={FadeInUp.delay(50)} style={styles.profileCard}>
             <View style={styles.profileTop}>
               <View style={styles.avatarCircle}>
-                <Text style={styles.avatarEmoji}>
-                  <User size={24} color={twColors.primary} />
-                </Text>
+                <User size={24} color={twColors.primary} />
               </View>
               <View>
-                <Text style={styles.profileName}>Jose Ivorra</Text>
+                <Text style={styles.profileName}>{user?.name ?? 'Usuario'}</Text>
                 <Text style={styles.profileSub}>
                   @jose_fit · Argentina, Morón
                 </Text>
@@ -93,11 +93,8 @@ const Profile = () => {
             </View>
           </Animated.View>
 
-          {/* Logros */}
           <Animated.View entering={FadeInUp.delay(120)}>
-            <View
-              style={{ flexDirection: "row", justifyContent: "space-between" }}
-            >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={styles.sectionTitle}>Logros recientes</Text>
               <Text style={styles.achievementLabel}>Ver más</Text>
             </View>
@@ -115,11 +112,7 @@ const Profile = () => {
             </ScrollView>
           </Animated.View>
 
-          {/* Menú */}
-          <Animated.View
-            entering={FadeInDown.delay(180)}
-            style={styles.menuList}
-          >
+          <Animated.View entering={FadeInDown.delay(180)} style={styles.menuList}>
             {menuItems.map((m) => (
               <Pressable
                 key={m.label}
@@ -130,18 +123,14 @@ const Profile = () => {
                 onHoverIn={() => setHoveredItem(m.label)}
                 onHoverOut={() => setHoveredItem(null)}
                 onPress={() => {
-                  if (m.href) {
-                    router.push(m.href as Href);
-                  }
+                  if (m.href) router.push(m.href as Href);
                 }}
               >
                 <View style={styles.menuIconWrap}>
                   <m.icon size={16} color={twColors.primary} />
                 </View>
                 <Text style={styles.menuLabel}>{m.label}</Text>
-                {m.count ? (
-                  <Text style={styles.menuCount}>{m.count}</Text>
-                ) : null}
+                {m.count ? <Text style={styles.menuCount}>{m.count}</Text> : null}
                 <ChevronRight size={14} color={twColors.muted} />
               </Pressable>
             ))}
@@ -153,35 +142,20 @@ const Profile = () => {
 };
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: twColors.background,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    alignItems: "center",
-    paddingBottom: 24,
-  },
+  screen: { flex: 1, backgroundColor: twColors.background },
+  scroll: { flex: 1 },
+  scrollContent: { alignItems: 'center', paddingBottom: 24 },
   content: {
-    width: "100%",
+    width: '100%',
     maxWidth: 512,
     paddingHorizontal: 20,
     paddingTop: 56,
     paddingBottom: 96,
     gap: 20,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  title: {
-    fontSize: 20,
-    fontFamily: twFonts.bold,
-    color: twColors.foreground,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerActions: { flexDirection: 'row', gap: 8 },
+  title: { fontSize: 20, fontFamily: twFonts.bold, color: twColors.foreground },
   settingsButton: {
     width: 36,
     height: 36,
@@ -189,8 +163,8 @@ const styles = StyleSheet.create({
     backgroundColor: twColors.card2,
     borderWidth: borderWidth.default,
     borderColor: twColors.border,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   profileCard: {
     backgroundColor: twColors.card,
@@ -200,67 +174,30 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 16,
   },
-  profileTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-  },
+  profileTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatarCircle: {
     width: 60,
     height: 60,
     borderRadius: 999,
-    backgroundColor: twColors.primary + "30",
+    backgroundColor: twColors.primary + '30',
     borderWidth: 2,
     borderColor: twColors.primary,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  avatarEmoji: {
-    fontSize: 26,
-  },
-  profileName: {
-    fontSize: 17,
-    fontFamily: twFonts.bold,
-    color: twColors.foreground,
-  },
-  profileSub: {
-    fontSize: 11,
-    fontFamily: twFonts.regular,
-    color: twColors.muted,
-    marginTop: 2,
-  },
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    borderTopWidth: borderWidth.default,
-    borderTopColor: "transparent",
-  },
-  statItem: {
-    alignItems: "center",
-  },
-  statValue: {
-    fontSize: 18,
-    fontFamily: twFonts.bold,
-    color: twColors.foreground,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontFamily: twFonts.regular,
-    color: twColors.muted,
-    marginTop: 2,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontFamily: twFonts.bold,
-    color: twColors.foreground,
-    marginBottom: 10,
-  },
+  profileName: { fontSize: 17, fontFamily: twFonts.bold, color: twColors.foreground },
+  profileSub: { fontSize: 11, fontFamily: twFonts.regular, color: twColors.muted, marginTop: 2 },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-around', borderTopWidth: borderWidth.default, borderTopColor: 'transparent' },
+  statItem: { alignItems: 'center' },
+  statValue: { fontSize: 18, fontFamily: twFonts.bold, color: twColors.foreground },
+  statLabel: { fontSize: 10, fontFamily: twFonts.regular, color: twColors.muted, marginTop: 2 },
+  sectionTitle: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.foreground, marginBottom: 10 },
   achievementsRow: {
-    width: "100%",
-    display: "flex",
-    flexDirection: "row",
-    justifyContent: "space-evenly",
-    alignItems: "center",
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
     gap: 12,
     paddingRight: 4,
   },
@@ -271,7 +208,7 @@ const styles = StyleSheet.create({
     borderRadius: twRadius.sm,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    alignItems: "center",
+    alignItems: 'center',
     minWidth: 88,
   },
   achievementLabel: {
@@ -279,45 +216,31 @@ const styles = StyleSheet.create({
     fontFamily: twFonts.regular,
     color: twColors.muted,
     marginTop: 4,
-    textAlign: "center",
-    cursor: "pointer",
+    textAlign: 'center',
   },
-  menuList: {
-    gap: 8,
-  },
+  menuList: { gap: 8 },
   quickActionCard: {
     backgroundColor: twColors.background,
     borderWidth: borderWidth.default,
     borderColor: twColors.border,
     borderRadius: twRadius.sm,
     padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
     elevation: 4,
   },
-  quickActionCardHovered: {
-    borderColor: twColors.primary,
-  },
+  quickActionCardHovered: { borderColor: twColors.primary },
   menuIconWrap: {
     width: 34,
     height: 34,
     borderRadius: twRadius.sm,
-    backgroundColor: twColors.primary + "1A",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: twColors.primary + '1A',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  menuLabel: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: twFonts.medium,
-    color: twColors.foreground,
-  },
-  menuCount: {
-    fontSize: 12,
-    fontFamily: twFonts.regular,
-    color: twColors.muted,
-  },
+  menuLabel: { flex: 1, fontSize: 14, fontFamily: twFonts.medium, color: twColors.foreground },
+  menuCount: { fontSize: 12, fontFamily: twFonts.regular, color: twColors.muted },
 });
 
 export default Profile;
