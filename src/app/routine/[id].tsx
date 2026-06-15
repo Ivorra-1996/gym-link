@@ -82,7 +82,7 @@ export default function RoutinePage() {
     return (
       <View style={styles.statusContainer}>
         <Text style={styles.statusText}>Rutina no encontrada</Text>
-        <Pressable onPress={() => goBack('/(tabs)/train')}>
+        <Pressable onPress={() => goBack('/train')}>
           <Text style={[styles.statusText, { color: twColors.primary, marginTop: 12 }]}>Volver</Text>
         </Pressable>
       </View>
@@ -98,7 +98,7 @@ export default function RoutinePage() {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <Pressable style={styles.backButton} onPress={() => goBack('/(tabs)/train')}>
+            <Pressable style={styles.backButton} onPress={() => goBack('/train')}>
               <ArrowLeft size={18} color={twColors.primary} />
               <Text style={styles.backText}>Volver</Text>
             </Pressable>

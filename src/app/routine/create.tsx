@@ -116,7 +116,7 @@ export default function CreateRoutine() {
     setSaving(true);
     try {
       await saveRoutine(routine);
-      goBack('/(tabs)/train');
+      goBack('/train');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       Alert.alert('Error al guardar', msg);
@@ -134,7 +134,7 @@ export default function CreateRoutine() {
         style: 'destructive',
         onPress: async () => {
           await deleteRoutine(routineId);
-          goBack('/(tabs)/train');
+          goBack('/train');
         },
       },
     ]);
@@ -154,7 +154,7 @@ export default function CreateRoutine() {
         >
           <View style={styles.content}>
             <View style={styles.header}>
-              <Pressable style={styles.backBtn} onPress={() => goBack('/(tabs)/train')}>
+              <Pressable style={styles.backBtn} onPress={() => goBack('/train')}>
                 <ArrowLeft size={18} color={twColors.primary} />
               </Pressable>
               <Text style={styles.headerTitle}>

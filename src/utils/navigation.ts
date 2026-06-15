@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 
-export function goBack(fallback: string = '/') {
+export function goBack(fallback = '/') {
   if (router.canGoBack()) {
     router.back();
   } else {

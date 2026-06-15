@@ -45,7 +45,7 @@ export default function HistoryScreen() {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <Pressable style={styles.backBtn} onPress={() => goBack('/(tabs)/profile')}>
+            <Pressable style={styles.backBtn} onPress={() => goBack('/profile')}>
               <ArrowLeft size={18} color={twColors.primary} />
             </Pressable>
             <Text style={styles.title}>Historial</Text>

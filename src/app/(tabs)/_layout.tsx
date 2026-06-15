@@ -1,10 +1,10 @@
 import { Tabs, router } from 'expo-router';
 import { Dumbbell, Home, Play, Search, User } from 'lucide-react-native';
 import React from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useWorkout } from '@/context/WorkoutContext';
 import { formatDuration } from '@/utils/workout';
-import { twColors, twFonts, borderWidth } from '@/constants/tailwind-runtime-theme';
+import { twColors, twFonts, borderWidth, twRadius } from '@/constants/tailwind-runtime-theme';
 
 function SessionBanner() {
   const { session } = useWorkout();
@@ -40,31 +40,51 @@ function SessionBanner() {
   );
 }
 
-function useSessionRecoveryPrompt() {
+function SessionRecoveryModal() {
   const { session, endSession } = useWorkout();
+  const [visible, setVisible] = React.useState(false);
   const shown = React.useRef(false);
 
   React.useEffect(() => {
     if (!session || shown.current) return;
-    // Skip if session just started (< 60 seconds ago)
     if (Date.now() - session.startedAt < 60_000) return;
     shown.current = true;
-    const timer = setTimeout(() => {
-      Alert.alert(
-        'Entrenamiento en progreso',
-        `Tenés una sesión de "${session.routineName}" sin terminar. ¿Querés continuar?`,
-        [
-          { text: 'Descartar', style: 'destructive', onPress: endSession },
-          { text: 'Continuar', onPress: () => router.push('/workout/active' as never) },
-        ],
-      );
-    }, 800);
+    const timer = setTimeout(() => setVisible(true), 800);
     return () => clearTimeout(timer);
-  }, [session, endSession]);
+  }, [session]);
+
+  if (!session || !visible) return null;
+
+  const handleDiscard = () => { setVisible(false); endSession(); };
+  const handleContinue = () => { setVisible(false); router.push('/workout/active' as never); };
+
+  return (
+    <Modal transparent visible onRequestClose={handleDiscard}>
+      <View style={recoveryStyles.overlay}>
+        <View style={recoveryStyles.card}>
+          <View style={recoveryStyles.pulse} />
+          <View style={recoveryStyles.textWrap}>
+            <Text style={recoveryStyles.title}>Entrenamiento en progreso</Text>
+            <Text style={recoveryStyles.message}>
+              Tenés una sesión de "{session.routineName}" sin terminar.
+            </Text>
+          </View>
+          <View style={recoveryStyles.btnRow}>
+            <Pressable style={recoveryStyles.discardBtn} onPress={handleDiscard}>
+              <Text style={recoveryStyles.discardText}>Descartar</Text>
+            </Pressable>
+            <Pressable style={recoveryStyles.continueBtn} onPress={handleContinue}>
+              <Play size={13} color={twColors.background} />
+              <Text style={recoveryStyles.continueText}>Continuar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 }
 
 export default function TabsLayout() {
-  useSessionRecoveryPrompt();
   return (
     <View style={{ flex: 1 }}>
       <Tabs
@@ -115,9 +135,62 @@ export default function TabsLayout() {
         <Tabs.Screen name="stats" options={{ href: null }} />
       </Tabs>
       <SessionBanner />
+      <SessionRecoveryModal />
     </View>
   );
 }
+
+const recoveryStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+  },
+  card: {
+    backgroundColor: twColors.card,
+    borderRadius: 16,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.primary,
+    padding: 20,
+    gap: 14,
+  },
+  pulse: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: twColors.primary,
+  },
+  textWrap: { gap: 4 },
+  title: { fontSize: 15, fontFamily: twFonts.bold, color: twColors.foreground },
+  message: { fontSize: 13, fontFamily: twFonts.regular, color: twColors.muted, lineHeight: 18 },
+  btnRow: { flexDirection: 'row', gap: 10 },
+  discardBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.card2,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    alignItems: 'center',
+  },
+  discardText: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.muted },
+  continueBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  continueText: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.background },
+});
 
 const styles = StyleSheet.create({
   sessionBanner: {

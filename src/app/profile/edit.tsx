@@ -66,7 +66,7 @@ export default function EditProfile() {
         { merge: true }
       );
       refreshUser();
-      goBack('/(tabs)/profile');
+      goBack('/profile');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       Alert.alert('Error al guardar', msg);
@@ -96,7 +96,7 @@ export default function EditProfile() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Pressable style={styles.backBtn} onPress={() => goBack('/(tabs)/profile')}>
+            <Pressable style={styles.backBtn} onPress={() => goBack('/profile')}>
               <ArrowLeft size={18} color={twColors.primary} />
             </Pressable>
             <Text style={styles.headerTitle}>Editar perfil</Text>

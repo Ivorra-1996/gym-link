@@ -150,7 +150,7 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Pressable style={styles.backBtn} onPress={() => goBack('/(tabs)/profile')}>
+          <Pressable style={styles.backBtn} onPress={() => goBack('/profile')}>
             <ArrowLeft size={18} color={twColors.primary} />
           </Pressable>
           <Text style={styles.headerTitle}>Configuración</Text>
