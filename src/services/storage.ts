@@ -10,7 +10,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
-import { ActiveSessionState, BodyWeightEntry, HydrationLog, Routine, WorkoutSession } from '@/types';
+import { ActiveSessionState, BodyWeightEntry, FoodEntry, HydrationLog, NutritionGoals, NutritionLog, Routine, WorkoutSession } from '@/types';
 
 // ── Firestore helpers ─────────────────────────────────────────────────────────
 
@@ -174,6 +174,63 @@ export async function getHydrationLogs(limitDays = 90): Promise<HydrationLog[]> 
     return snap.docs.slice(0, limitDays).map((d) => d.data() as HydrationLog);
   } catch {
     return [];
+  }
+}
+
+// ── Nutrition ─────────────────────────────────────────────────────────────────
+
+const NUTRITION_GOALS_KEY = '@gymlink/nutrition_goals';
+const NUTRITION_TODAY_KEY = '@gymlink/nutrition_today';
+
+export const DEFAULT_NUTRITION_GOALS: NutritionGoals = {
+  calories: 2000,
+  protein: 150,
+  carbs: 220,
+  fat: 70,
+};
+
+export async function getNutritionGoals(): Promise<NutritionGoals> {
+  try {
+    const raw = await AsyncStorage.getItem(NUTRITION_GOALS_KEY);
+    return raw ? JSON.parse(raw) : DEFAULT_NUTRITION_GOALS;
+  } catch {
+    return DEFAULT_NUTRITION_GOALS;
+  }
+}
+
+export async function setNutritionGoals(goals: NutritionGoals): Promise<void> {
+  await AsyncStorage.setItem(NUTRITION_GOALS_KEY, JSON.stringify(goals));
+}
+
+export async function getTodayNutritionEntries(): Promise<FoodEntry[]> {
+  try {
+    const raw = await AsyncStorage.getItem(NUTRITION_TODAY_KEY);
+    if (!raw) return [];
+    const { date, entries } = JSON.parse(raw);
+    return date === todayStr() ? entries : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveTodayNutritionEntries(entries: FoodEntry[]): Promise<void> {
+  await AsyncStorage.setItem(
+    NUTRITION_TODAY_KEY,
+    JSON.stringify({ date: todayStr(), entries }),
+  );
+}
+
+export async function syncNutritionLog(entries: FoodEntry[], goals: NutritionGoals): Promise<void> {
+  const today = todayStr();
+  try {
+    await setDoc(doc(db, 'users', uid(), 'nutritionLogs', today), {
+      date: today,
+      entries,
+      goals,
+      updatedAt: Date.now(),
+    } satisfies NutritionLog);
+  } catch {
+    // local data is primary — network errors are non-critical
   }
 }
 

@@ -133,6 +133,7 @@ export default function TabsLayout() {
         />
         <Tabs.Screen name="statistics" options={{ href: null }} />
         <Tabs.Screen name="stats" options={{ href: null }} />
+        <Tabs.Screen name="nutrition" options={{ href: null }} />
       </Tabs>
       <SessionBanner />
       <SessionRecoveryModal />

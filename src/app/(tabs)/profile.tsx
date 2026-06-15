@@ -7,6 +7,7 @@ import {
   Pencil,
   Settings,
   TrendingUp,
+  Utensils,
   User,
   Zap,
 } from 'lucide-react-native';
@@ -30,6 +31,7 @@ import {
 
 const menuItems = [
   { icon: TrendingUp, label: 'Estadísticas mensuales', count: '', href: '/statistics' },
+  { icon: Utensils,   label: 'Nutrición',              count: '', href: '/nutrition' },
   { icon: Flame,      label: 'Peso Corporal',          count: '', href: '/tools/bodyweight' },
 ];
 

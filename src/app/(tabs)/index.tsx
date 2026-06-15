@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Bell, Calendar, Flame, TrendingUp, Trophy, Zap } from 'lucide-react-native';
+import { Bell, Calendar, ChevronRight, Flame, TrendingUp, Trophy, Utensils, Zap } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -13,7 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import HydrationTracker from '@/components/HydrationTracker';
-import { getHydrationGlasses, getHydrationGoal, getRoutines, getSessions, saveHydrationLog, setHydrationGlasses, setHydrationGoal } from '@/services/storage';
+import { getHydrationGlasses, getHydrationGoal, getNutritionGoals, getRoutines, getSessions, getTodayNutritionEntries, saveHydrationLog, setHydrationGlasses, setHydrationGoal } from '@/services/storage';
 import { Routine } from '@/types';
 import { calculateStreak, countWeekSessions } from '@/utils/workout';
 import {
@@ -49,6 +49,8 @@ const Index = () => {
   const [streak, setStreak] = useState(0);
   const [totalSessions, setTotalSessions] = useState(0);
   const [weekSessions, setWeekSessions] = useState(0);
+  const [calConsumed, setCalConsumed] = useState(0);
+  const [calGoal, setCalGoal] = useState(2000);
   const pulse = useSharedValue(0);
 
   const todayIndex = getTodayDayIndex();
@@ -79,6 +81,10 @@ const Index = () => {
         setTotalSessions(sessions.length);
         setWeekSessions(countWeekSessions(sessions));
       });
+      getTodayNutritionEntries().then((entries) => {
+        setCalConsumed(entries.reduce((s, e) => s + e.calories, 0));
+      });
+      getNutritionGoals().then((g) => setCalGoal(g.calories));
     }, [])
   );
 
@@ -233,6 +239,36 @@ const Index = () => {
               onRemove={handleRemoveGlass}
               onGoalChange={handleGoalChange}
             />
+          </Animated.View>
+
+          {/* Nutrición */}
+          <Animated.View entering={FadeInUp.delay(200)}>
+            <Pressable style={styles.nutritionCard} onPress={() => router.push('/nutrition' as never)}>
+              <View style={styles.nutritionLeft}>
+                <View style={styles.nutritionIconCircle}>
+                  <Utensils size={16} color={twColors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.nutritionTitle}>Nutrición</Text>
+                  <Text style={styles.nutritionSub}>
+                    {calConsumed > 0
+                      ? `${calConsumed.toLocaleString('es-AR')} / ${calGoal.toLocaleString('es-AR')} kcal`
+                      : 'Sin comidas registradas hoy'}
+                  </Text>
+                  {calConsumed > 0 && (
+                    <View style={styles.nutritionBarBg}>
+                      <View
+                        style={[
+                          styles.nutritionBarFill,
+                          { width: `${Math.min((calConsumed / calGoal) * 100, 100)}%` as any },
+                        ]}
+                      />
+                    </View>
+                  )}
+                </View>
+              </View>
+              <ChevronRight size={16} color={twColors.muted} />
+            </Pressable>
           </Animated.View>
 
         </Animated.View>
@@ -395,6 +431,42 @@ const styles = StyleSheet.create({
     borderColor: twColors.border,
   },
   restDayAltBtnText: { fontSize: 12, fontFamily: twFonts.medium, color: twColors.muted },
+
+  // Nutrición
+  nutritionCard: {
+    backgroundColor: twColors.card,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    borderRadius: twRadius.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  nutritionLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  nutritionIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    backgroundColor: twColors.primary + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nutritionTitle: { fontSize: 13, fontFamily: twFonts.bold, color: twColors.foreground },
+  nutritionSub: { fontSize: 11, fontFamily: twFonts.regular, color: twColors.muted, marginTop: 2 },
+  nutritionBarBg: {
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: twColors.border,
+    overflow: 'hidden',
+    marginTop: 6,
+  },
+  nutritionBarFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: twColors.primary,
+  },
 });
 
 export default Index;

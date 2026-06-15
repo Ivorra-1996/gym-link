@@ -84,3 +84,27 @@ export interface HydrationLog {
   goal: number;
   updatedAt: number;
 }
+
+export interface NutritionGoals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export interface FoodEntry {
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  addedAt: number;
+}
+
+export interface NutritionLog {
+  date: string;
+  entries: FoodEntry[];
+  goals: NutritionGoals;
+  updatedAt: number;
+}
