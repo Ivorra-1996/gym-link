@@ -1,11 +1,6 @@
 import { useAuth } from '@/context/AuthContext';
-import { auth } from '@/services/firebase';
+import { useSocialAuth } from '@/hooks/useSocialAuth';
 import { twColors, twFonts, twRadius } from '@/constants/tailwind-runtime-theme';
-import {
-  GoogleAuthProvider,
-  OAuthProvider,
-  signInWithPopup,
-} from 'firebase/auth';
 import { Dumbbell, Eye, EyeOff, Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
@@ -28,6 +23,7 @@ type Mode = 'home' | 'signin' | 'signup';
 
 export default function LoginScreen() {
   const { signIn, signUp } = useAuth();
+  const { signInWithGoogle, signInWithApple } = useSocialAuth();
   const [mode, setMode] = useState<Mode>('home');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,16 +32,9 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
-    if (Platform.OS !== 'web') {
-      Alert.alert(
-        'Google Sign-In',
-        'En dispositivos nativos necesitás configurar las credenciales OAuth. Por ahora usá email o iniciá desde el navegador.'
-      );
-      return;
-    }
     setLoading(true);
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
+      await signInWithGoogle();
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code ?? '';
       if (code === 'auth/operation-not-allowed') {
@@ -59,16 +48,9 @@ export default function LoginScreen() {
   };
 
   const handleAppleSignIn = async () => {
-    if (Platform.OS !== 'web') {
-      Alert.alert(
-        'Apple Sign-In',
-        'Apple Sign-In en dispositivos nativos requiere un dev build y cuenta de Apple Developer.'
-      );
-      return;
-    }
     setLoading(true);
     try {
-      await signInWithPopup(auth, new OAuthProvider('apple.com'));
+      await signInWithApple();
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code ?? '';
       if (code === 'auth/operation-not-allowed') {
