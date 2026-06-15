@@ -9,7 +9,6 @@ import {
   scheduleHydrationReminders,
 } from '@/services/notifications';
 import { getRoutines } from '@/services/storage';
-import { Routine } from '@/types';
 import {
   ArrowLeft,
   Bell,
@@ -121,7 +120,6 @@ export default function SettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
-  const [routines, setRoutines] = useState<Routine[]>([]);
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -132,9 +130,6 @@ export default function SettingsScreen() {
     (p) => p.providerId === 'password'
   );
 
-  useEffect(() => {
-    getRoutines().then(setRoutines);
-  }, []);
 
   useEffect(() => {
     if (!uid) return;
@@ -187,7 +182,8 @@ export default function SettingsScreen() {
     if (key === 'notificacionesActivas') {
       setSavingKey(key);
       if (value) {
-        const granted = await enableNotifications(routines, settings.intervaloHidratacion);
+        const freshRoutines = await getRoutines();
+        const granted = await enableNotifications(freshRoutines, settings.intervaloHidratacion);
         if (!granted) {
           setSavingKey(null);
           setToast('Permisos denegados. Activá las notificaciones en Configuración del sistema.');

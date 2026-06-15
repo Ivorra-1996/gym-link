@@ -1,7 +1,7 @@
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { auth } from '@/services/firebase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -15,6 +15,9 @@ WebBrowser.maybeCompleteAuthSession();
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 
 export function useSocialAuth(onError?: (msg: string) => void) {
+  const onErrorRef = useRef(onError);
+  useEffect(() => { onErrorRef.current = onError; });
+
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
   });
@@ -35,21 +38,21 @@ export function useSocialAuth(onError?: (msg: string) => void) {
     if (response?.type === 'success') {
       const idToken = response.params.id_token;
       if (!idToken) {
-        onError?.('No se pudo iniciar sesión con Google. Intentá de nuevo.');
+        onErrorRef.current?.('No se pudo iniciar sesión con Google. Intentá de nuevo.');
         return;
       }
       const credential = GoogleAuthProvider.credential(idToken);
       signInWithCredential(auth, credential).catch(() => {
-        onError?.('No se pudo iniciar sesión con Google. Intentá de nuevo.');
+        onErrorRef.current?.('No se pudo iniciar sesión con Google. Intentá de nuevo.');
       });
     } else if (response?.type === 'error') {
-      onError?.('No se pudo iniciar sesión con Google. Intentá de nuevo.');
+      onErrorRef.current?.('No se pudo iniciar sesión con Google. Intentá de nuevo.');
     }
   }, [response]);
 
   const signInWithGoogle = async () => {
     if (!GOOGLE_WEB_CLIENT_ID) {
-      onError?.('Falta configurar el inicio de sesión con Google.');
+      onErrorRef.current?.('Falta configurar el inicio de sesión con Google.');
       return;
     }
     await promptAsync();
