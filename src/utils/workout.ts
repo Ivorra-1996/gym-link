@@ -83,6 +83,32 @@ export function detectPRs(
   return prs;
 }
 
+export function calculateMaxStreak(sessions: { startedAt: number }[]): number {
+  if (sessions.length === 0) return 0;
+  const DAY = 86400000;
+  const days = Array.from(
+    new Set(
+      sessions.map((s) => {
+        const d = new Date(s.startedAt);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime();
+      })
+    )
+  ).sort((a, b) => a - b);
+
+  let max = 1;
+  let current = 1;
+  for (let i = 1; i < days.length; i++) {
+    if (days[i] - days[i - 1] === DAY) {
+      current++;
+      if (current > max) max = current;
+    } else {
+      current = 1;
+    }
+  }
+  return max;
+}
+
 export function countWeekSessions(sessions: { startedAt: number }[]): number {
   const now = new Date();
   const dow = now.getDay();
