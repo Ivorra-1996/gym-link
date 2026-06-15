@@ -11,8 +11,8 @@ import {
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -32,6 +32,41 @@ import {
   twRadius,
 } from '@/constants/tailwind-runtime-theme';
 
+function ConfirmModal({
+  visible,
+  title,
+  message,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  title: string;
+  message: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onCancel}>
+      <View style={mStyles.overlay}>
+        <View style={mStyles.card}>
+          <Text style={mStyles.title}>{title}</Text>
+          <Text style={mStyles.message}>{message}</Text>
+          <View style={mStyles.btnRow}>
+            <Pressable style={mStyles.cancelBtn} onPress={onCancel}>
+              <Text style={mStyles.cancelText}>Cancelar</Text>
+            </Pressable>
+            <Pressable style={mStyles.deleteBtn} onPress={onConfirm}>
+              <Text style={mStyles.deleteText}>{confirmLabel}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function CreateRoutine() {
   const { routineId } = useLocalSearchParams<{ routineId?: string }>();
   const isEditing = !!routineId;
@@ -42,6 +77,8 @@ export default function CreateRoutine() {
   const [exercises, setExercises] = useState<RoutineExercise[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     if (!routineId) return;
@@ -56,6 +93,11 @@ export default function CreateRoutine() {
     });
   }, [routineId]);
 
+  const handleNameChange = (v: string) => {
+    setName(v);
+    if (error) setError(null);
+  };
+
   const handleAddExercises = (selected: LibraryExercise[]) => {
     const existing = new Set(exercises.map((e) => e.libraryId));
     const newOnes: RoutineExercise[] = selected
@@ -68,6 +110,7 @@ export default function CreateRoutine() {
         weight: 0,
       }));
     setExercises((prev) => [...prev, ...newOnes]);
+    if (error) setError(null);
   };
 
   const updateExercise = (index: number, key: keyof RoutineExercise, value: string) => {
@@ -96,11 +139,11 @@ export default function CreateRoutine() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Falta el nombre', 'Ponele un nombre a la rutina.');
+      setError('Ponele un nombre a la rutina.');
       return;
     }
     if (exercises.length === 0) {
-      Alert.alert('Sin ejercicios', 'Agregá al menos un ejercicio.');
+      setError('Agregá al menos un ejercicio.');
       return;
     }
     const now = Date.now();
@@ -114,30 +157,23 @@ export default function CreateRoutine() {
       updatedAt: now,
     };
     setSaving(true);
+    setError(null);
     try {
       await saveRoutine(routine);
       goBack('/train');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      Alert.alert('Error al guardar', msg);
+      const msg = err instanceof Error ? err.message : 'No se pudo guardar la rutina.';
+      setError(msg);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDeleteConfirm = async () => {
     if (!routineId) return;
-    Alert.alert('Eliminar rutina', '¿Estás seguro?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteRoutine(routineId);
-          goBack('/train');
-        },
-      },
-    ]);
+    setShowDeleteModal(false);
+    await deleteRoutine(routineId);
+    goBack('/train');
   };
 
   return (
@@ -161,7 +197,7 @@ export default function CreateRoutine() {
                 {isEditing ? 'Editar rutina' : 'Nueva rutina'}
               </Text>
               {isEditing && (
-                <Pressable onPress={handleDelete}>
+                <Pressable onPress={() => setShowDeleteModal(true)}>
                   <Trash2 size={18} color={twColors.destructive} />
                 </Pressable>
               )}
@@ -171,7 +207,7 @@ export default function CreateRoutine() {
               <Text style={styles.label}>Nombre de la rutina</Text>
               <TextInput
                 value={name}
-                onChangeText={setName}
+                onChangeText={handleNameChange}
                 placeholder="Ej: Push Day"
                 placeholderTextColor={twColors.muted}
                 style={styles.input}
@@ -302,7 +338,14 @@ export default function CreateRoutine() {
         </ScrollView>
 
         <View style={styles.saveFooter}>
-          <Pressable style={[styles.saveBtn, saving && { opacity: 0.7 }]} onPress={handleSave} disabled={saving}>
+          {error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : null}
+          <Pressable
+            style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+            onPress={handleSave}
+            disabled={saving}
+          >
             {saving
               ? <ActivityIndicator color={twColors.background} />
               : <Text style={styles.saveBtnText}>{isEditing ? 'Guardar cambios' : 'Crear rutina'}</Text>
@@ -316,10 +359,60 @@ export default function CreateRoutine() {
           onConfirm={handleAddExercises}
           onClose={() => setPickerVisible(false)}
         />
+
+        <ConfirmModal
+          visible={showDeleteModal}
+          title="Eliminar rutina"
+          message="¿Estás seguro? Esta acción no se puede deshacer."
+          confirmLabel="Eliminar"
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setShowDeleteModal(false)}
+        />
       </View>
     </KeyboardAvoidingView>
   );
 }
+
+const mStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: twColors.card,
+    borderRadius: twRadius.sm,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    padding: 24,
+    gap: 12,
+  },
+  title: { fontSize: 16, fontFamily: twFonts.bold, color: twColors.foreground },
+  message: { fontSize: 13, fontFamily: twFonts.regular, color: twColors.muted, lineHeight: 20 },
+  btnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.card2,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    alignItems: 'center',
+  },
+  cancelText: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.muted },
+  deleteBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.destructive,
+    alignItems: 'center',
+  },
+  deleteText: { fontSize: 14, fontFamily: twFonts.bold, color: '#fff' },
+});
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: twColors.background },
@@ -455,6 +548,13 @@ const styles = StyleSheet.create({
     backgroundColor: twColors.background,
     borderTopWidth: borderWidth.default,
     borderTopColor: twColors.border,
+    gap: 8,
+  },
+  errorText: {
+    fontSize: 12,
+    fontFamily: twFonts.medium,
+    color: twColors.destructive,
+    textAlign: 'center',
   },
   saveBtn: {
     backgroundColor: twColors.primary,

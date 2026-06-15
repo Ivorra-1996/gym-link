@@ -1,11 +1,10 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { router } from 'expo-router';
 import { goBack } from '@/utils/navigation';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -52,47 +51,13 @@ function BodyWeightChart({ entries }: { entries: BodyWeightEntry[] }) {
   return (
     <View style={styles.chartWrapper}>
       <Svg width={CHART_W} height={CHART_H}>
-        <Line
-          x1={PAD}
-          y1={PAD}
-          x2={PAD}
-          y2={CHART_H - PAD}
-          stroke={twColors.border}
-          strokeWidth={1}
-        />
-        <Line
-          x1={PAD}
-          y1={CHART_H - PAD}
-          x2={CHART_W - PAD}
-          y2={CHART_H - PAD}
-          stroke={twColors.border}
-          strokeWidth={1}
-        />
-        <Polyline
-          points={points}
-          fill="none"
-          stroke={twColors.primary}
-          strokeWidth={2}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+        <Line x1={PAD} y1={PAD} x2={PAD} y2={CHART_H - PAD} stroke={twColors.border} strokeWidth={1} />
+        <Line x1={PAD} y1={CHART_H - PAD} x2={CHART_W - PAD} y2={CHART_H - PAD} stroke={twColors.border} strokeWidth={1} />
+        <Polyline points={points} fill="none" stroke={twColors.primary} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         {sorted.map((e, i) => (
-          <Circle
-            key={e.id}
-            cx={toX(i)}
-            cy={toY(e.weight)}
-            r={i === sorted.length - 1 ? 5 : 3}
-            fill={twColors.primary}
-          />
+          <Circle key={e.id} cx={toX(i)} cy={toY(e.weight)} r={i === sorted.length - 1 ? 5 : 3} fill={twColors.primary} />
         ))}
-        <SvgText
-          x={toX(sorted.length - 1)}
-          y={toY(last.weight) - 10}
-          fontSize={11}
-          fill={twColors.primary}
-          textAnchor="middle"
-          fontWeight="bold"
-        >
+        <SvgText x={toX(sorted.length - 1)} y={toY(last.weight) - 10} fontSize={11} fill={twColors.primary} textAnchor="middle" fontWeight="bold">
           {last.weight} kg
         </SvgText>
       </Svg>
@@ -100,10 +65,47 @@ function BodyWeightChart({ entries }: { entries: BodyWeightEntry[] }) {
   );
 }
 
+function ConfirmModal({
+  visible,
+  title,
+  message,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  title: string;
+  message: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onCancel}>
+      <View style={mStyles.overlay}>
+        <View style={mStyles.card}>
+          <Text style={mStyles.title}>{title}</Text>
+          <Text style={mStyles.message}>{message}</Text>
+          <View style={mStyles.btnRow}>
+            <Pressable style={mStyles.cancelBtn} onPress={onCancel}>
+              <Text style={mStyles.cancelText}>Cancelar</Text>
+            </Pressable>
+            <Pressable style={mStyles.deleteBtn} onPress={onConfirm}>
+              <Text style={mStyles.deleteText}>{confirmLabel}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function BodyWeightTracker() {
   const [entries, setEntries] = useState<BodyWeightEntry[]>([]);
   const [weightInput, setWeightInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
+  const [inputError, setInputError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -111,10 +113,15 @@ export default function BodyWeightTracker() {
     }, [])
   );
 
+  const handleWeightChange = (v: string) => {
+    setWeightInput(v);
+    if (inputError) setInputError(null);
+  };
+
   const handleAdd = async () => {
     const w = parseWeight(weightInput);
     if (w <= 0) {
-      Alert.alert('Peso inválido', 'Ingresá un peso mayor a 0.');
+      setInputError('Ingresá un peso mayor a 0.');
       return;
     }
     const entry: BodyWeightEntry = {
@@ -126,21 +133,15 @@ export default function BodyWeightTracker() {
     await saveBodyWeightEntry(entry);
     setWeightInput('');
     setNotesInput('');
+    setInputError(null);
     getBodyWeightEntries().then(setEntries);
   };
 
-  const handleDelete = (id: string) => {
-    Alert.alert('Eliminar registro', '¿Querés eliminar esta entrada?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteBodyWeightEntry(id);
-          getBodyWeightEntries().then(setEntries);
-        },
-      },
-    ]);
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    await deleteBodyWeightEntry(deleteTarget);
+    setDeleteTarget(null);
+    getBodyWeightEntries().then(setEntries);
   };
 
   const latest = entries[0];
@@ -205,11 +206,15 @@ export default function BodyWeightTracker() {
               <View style={styles.addRow}>
                 <TextInput
                   value={weightInput}
-                  onChangeText={setWeightInput}
+                  onChangeText={handleWeightChange}
                   placeholder="Peso (kg)"
                   placeholderTextColor={twColors.muted}
                   keyboardType="decimal-pad"
-                  style={[styles.addInput, { flex: 1 }]}
+                  style={[
+                    styles.addInput,
+                    { flex: 1 },
+                    inputError ? styles.addInputError : null,
+                  ]}
                   selectTextOnFocus
                 />
                 <TextInput
@@ -223,6 +228,9 @@ export default function BodyWeightTracker() {
                   <Plus size={18} color={twColors.background} />
                 </Pressable>
               </View>
+              {inputError ? (
+                <Text style={styles.inputErrorText}>{inputError}</Text>
+              ) : null}
             </View>
 
             <Text style={styles.sectionTitle}>Historial</Text>
@@ -244,7 +252,7 @@ export default function BodyWeightTracker() {
                       month: 'short',
                     })}
                   </Text>
-                  <Pressable onPress={() => handleDelete(e.id)}>
+                  <Pressable onPress={() => setDeleteTarget(e.id)}>
                     <Trash2 size={14} color={twColors.muted} />
                   </Pressable>
                 </View>
@@ -253,9 +261,59 @@ export default function BodyWeightTracker() {
           </View>
         </ScrollView>
       </View>
+
+      <ConfirmModal
+        visible={deleteTarget !== null}
+        title="Eliminar registro"
+        message="¿Querés eliminar esta entrada?"
+        confirmLabel="Eliminar"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </KeyboardAvoidingView>
   );
 }
+
+const mStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: twColors.card,
+    borderRadius: twRadius.sm,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    padding: 24,
+    gap: 12,
+  },
+  title: { fontSize: 16, fontFamily: twFonts.bold, color: twColors.foreground },
+  message: { fontSize: 13, fontFamily: twFonts.regular, color: twColors.muted, lineHeight: 20 },
+  btnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.card2,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    alignItems: 'center',
+  },
+  cancelText: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.muted },
+  deleteBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.destructive,
+    alignItems: 'center',
+  },
+  deleteText: { fontSize: 14, fontFamily: twFonts.bold, color: '#fff' },
+});
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: twColors.background },
@@ -305,7 +363,7 @@ const styles = StyleSheet.create({
     borderColor: twColors.border,
     borderRadius: twRadius.sm,
     padding: 14,
-    gap: 10,
+    gap: 8,
   },
   sectionTitle: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.foreground },
   addRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
@@ -319,6 +377,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: twFonts.regular,
     color: twColors.foreground,
+  },
+  addInputError: {
+    borderColor: twColors.destructive,
+  },
+  inputErrorText: {
+    fontSize: 11,
+    fontFamily: twFonts.medium,
+    color: twColors.destructive,
   },
   addBtn: {
     width: 40,
