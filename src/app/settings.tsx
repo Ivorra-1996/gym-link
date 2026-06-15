@@ -3,9 +3,18 @@ import { goBack } from '@/utils/navigation';
 import { deleteUser, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import {
+  cancelAllNotifications,
+  checkNotificationPermissions,
+  enableNotifications,
+  scheduleHydrationReminders,
+} from '@/services/notifications';
+import { getRoutines } from '@/services/storage';
+import { Routine } from '@/types';
+import {
   ArrowLeft,
   Bell,
   ChevronRight,
+  Droplets,
   LogOut,
   Mail,
   MapPin,
@@ -17,6 +26,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -37,12 +47,14 @@ type SettingsData = {
   visibleEnMapa: boolean;
   buscarMatches: boolean;
   notificacionesActivas: boolean;
+  intervaloHidratacion: number;
 };
 
 const DEFAULT: SettingsData = {
   visibleEnMapa: false,
   buscarMatches: false,
   notificacionesActivas: false,
+  intervaloHidratacion: 2,
 };
 
 type ActiveModal = 'signout' | 'password' | 'delete' | null;
@@ -109,6 +121,7 @@ export default function SettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
+  const [routines, setRoutines] = useState<Routine[]>([]);
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -120,18 +133,34 @@ export default function SettingsScreen() {
   );
 
   useEffect(() => {
+    getRoutines().then(setRoutines);
+  }, []);
+
+  useEffect(() => {
     if (!uid) return;
-    getDoc(doc(db, 'users', uid)).then((snap) => {
+    (async () => {
+      const snap = await getDoc(doc(db, 'users', uid));
       if (snap.exists()) {
         const d = snap.data();
+        let notificacionesActivas = d.notificacionesActivas ?? false;
+
+        if (notificacionesActivas) {
+          const stillGranted = await checkNotificationPermissions();
+          if (!stillGranted) {
+            notificacionesActivas = false;
+            setDoc(doc(db, 'users', uid), { notificacionesActivas: false }, { merge: true }).catch(() => {});
+          }
+        }
+
         setSettings({
           visibleEnMapa: d.visibleEnMapa ?? false,
           buscarMatches: d.buscarMatches ?? false,
-          notificacionesActivas: d.notificacionesActivas ?? false,
+          notificacionesActivas,
+          intervaloHidratacion: d.intervaloHidratacion ?? 2,
         });
       }
       setLoading(false);
-    });
+    })();
   }, [uid]);
 
   useEffect(() => {
@@ -154,6 +183,32 @@ export default function SettingsScreen() {
 
   const toggle = async (key: keyof SettingsData, value: boolean) => {
     if (!uid) return;
+
+    if (key === 'notificacionesActivas') {
+      setSavingKey(key);
+      if (value) {
+        const granted = await enableNotifications(routines, settings.intervaloHidratacion);
+        if (!granted) {
+          setSavingKey(null);
+          setToast('Permisos denegados. Activá las notificaciones en Configuración del sistema.');
+          return;
+        }
+        setSettings((s) => ({ ...s, notificacionesActivas: true }));
+        setToast('Notificaciones activadas ✓');
+      } else {
+        await cancelAllNotifications();
+        setSettings((s) => ({ ...s, notificacionesActivas: false }));
+      }
+      try {
+        await setDoc(doc(db, 'users', uid), { notificacionesActivas: value }, { merge: true });
+      } catch {
+        setToast('No se pudo guardar el cambio.');
+      } finally {
+        setSavingKey(null);
+      }
+      return;
+    }
+
     const prev = settings;
     const next = { ...settings, [key]: value };
     setSettings(next);
@@ -162,6 +217,22 @@ export default function SettingsScreen() {
       await setDoc(doc(db, 'users', uid), { [key]: value }, { merge: true });
     } catch {
       setSettings(prev);
+      setToast('No se pudo guardar el cambio.');
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const setIntervalHydration = async (hours: number) => {
+    if (!uid) return;
+    setSettings((s) => ({ ...s, intervaloHidratacion: hours }));
+    setSavingKey('intervaloHidratacion');
+    if (settings.notificacionesActivas) {
+      await scheduleHydrationReminders(hours);
+    }
+    try {
+      await setDoc(doc(db, 'users', uid), { intervaloHidratacion: hours }, { merge: true });
+    } catch {
       setToast('No se pudo guardar el cambio.');
     } finally {
       setSavingKey(null);
@@ -260,17 +331,26 @@ export default function SettingsScreen() {
           />
         </Section>
 
-        {/* Notificaciones */}
-        <Section title="Notificaciones">
-          <ToggleRow
-            label="Notificaciones"
-            sublabel="Recordatorios de entrenamiento e hidratación"
-            icon={Bell}
-            value={settings.notificacionesActivas}
-            loading={savingKey === 'notificacionesActivas'}
-            onValueChange={(v) => toggle('notificacionesActivas', v)}
-          />
-        </Section>
+        {/* Notificaciones — solo nativo */}
+        {Platform.OS !== 'web' && (
+          <Section title="Notificaciones">
+            <ToggleRow
+              label="Notificaciones"
+              sublabel="Recordatorios de entrenamiento e hidratación"
+              icon={Bell}
+              value={settings.notificacionesActivas}
+              loading={savingKey === 'notificacionesActivas'}
+              onValueChange={(v) => toggle('notificacionesActivas', v)}
+            />
+            {settings.notificacionesActivas && (
+              <IntervalRow
+                value={settings.intervaloHidratacion}
+                loading={savingKey === 'intervaloHidratacion'}
+                onChange={setIntervalHydration}
+              />
+            )}
+          </Section>
+        )}
 
         {/* Sesión */}
         <Section title="Sesión">
@@ -431,6 +511,43 @@ function ToggleRow({
   );
 }
 
+const INTERVAL_OPTIONS = [1, 2, 3, 4];
+
+function IntervalRow({
+  value,
+  loading,
+  onChange,
+}: {
+  value: number;
+  loading: boolean;
+  onChange: (h: number) => void;
+}) {
+  return (
+    <View style={[styles.row, { flexWrap: 'wrap', rowGap: 8 }]}>
+      <View style={styles.rowIcon}>
+        <Droplets size={15} color={twColors.muted} />
+      </View>
+      <View style={{ flex: 1, gap: 8 }}>
+        <Text style={styles.rowLabel}>Recordatorio de agua</Text>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          {INTERVAL_OPTIONS.map((h) => (
+            <Pressable
+              key={h}
+              onPress={() => onChange(h)}
+              style={[styles.chip, value === h && styles.chipActive]}
+            >
+              <Text style={[styles.chipText, value === h && styles.chipTextActive]}>
+                {h}h
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+      {loading && <ActivityIndicator size="small" color={twColors.primary} />}
+    </View>
+  );
+}
+
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const mStyles = StyleSheet.create({
@@ -541,4 +658,18 @@ const styles = StyleSheet.create({
   rowIcon: { width: 28, alignItems: 'center' },
   rowLabel: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.foreground },
   rowSub: { fontSize: 11, fontFamily: twFonts.regular, color: twColors.muted, marginTop: 1 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.card2,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+  },
+  chipActive: {
+    backgroundColor: twColors.primary,
+    borderColor: twColors.primary,
+  },
+  chipText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.muted },
+  chipTextActive: { color: twColors.background },
 });

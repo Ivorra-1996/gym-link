@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Bell, Flame, TrendingUp, Trophy, Zap } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   FadeInUp,
@@ -117,7 +117,7 @@ const Index = () => {
             <View />
             <Pressable
               style={styles.bellButton}
-              onPress={() => Alert.alert('Notificaciones', 'Próximamente.')}
+              onPress={() => router.push('/settings')}
             >
               <Bell size={18} color={twColors.foreground} />
             </Pressable>

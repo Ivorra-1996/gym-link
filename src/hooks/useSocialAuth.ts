@@ -2,7 +2,6 @@ import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { useEffect } from 'react';
-import { Alert } from 'react-native';
 import { auth } from '@/services/firebase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -15,7 +14,7 @@ WebBrowser.maybeCompleteAuthSession();
 //    Agregá el redirect URI que aparece en los logs de Metro cuando iniciás la app
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 
-export function useSocialAuth() {
+export function useSocialAuth(onError?: (msg: string) => void) {
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
   });
@@ -36,21 +35,21 @@ export function useSocialAuth() {
     if (response?.type === 'success') {
       const idToken = response.params.id_token;
       if (!idToken) {
-        Alert.alert('Error', 'No se recibió el token de Google.');
+        onError?.('No se pudo iniciar sesión con Google. Intentá de nuevo.');
         return;
       }
       const credential = GoogleAuthProvider.credential(idToken);
       signInWithCredential(auth, credential).catch(() => {
-        Alert.alert('Error', 'No se pudo completar el inicio de sesión con Google.');
+        onError?.('No se pudo iniciar sesión con Google. Intentá de nuevo.');
       });
     } else if (response?.type === 'error') {
-      Alert.alert('Error', 'No se pudo iniciar sesión con Google.');
+      onError?.('No se pudo iniciar sesión con Google. Intentá de nuevo.');
     }
   }, [response]);
 
   const signInWithGoogle = async () => {
     if (!GOOGLE_WEB_CLIENT_ID) {
-      Alert.alert('Falta configurar', 'Definí EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID en el archivo .env.');
+      onError?.('Falta configurar el inicio de sesión con Google.');
       return;
     }
     await promptAsync();

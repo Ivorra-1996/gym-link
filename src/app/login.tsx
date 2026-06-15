@@ -5,7 +5,6 @@ import { Dumbbell, Eye, EyeOff, Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -23,24 +22,26 @@ type Mode = 'home' | 'signin' | 'signup';
 
 export default function LoginScreen() {
   const { signIn, signUp } = useAuth();
-  const { signInWithGoogle } = useSocialAuth();
+  const { signInWithGoogle } = useSocialAuth((msg) => setError(msg));
   const [mode, setMode] = useState<Mode>('home');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const clearError = () => { if (error) setError(null); };
 
   const handleGoogleSignIn = async () => {
+    setError(null);
     setLoading(true);
     try {
       await signInWithGoogle();
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code ?? '';
-      if (code === 'auth/operation-not-allowed') {
-        Alert.alert('No habilitado', 'Activá Google en Firebase Console → Authentication → Sign-in methods.');
-      } else if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
-        Alert.alert('Error', 'No se pudo iniciar sesión con Google.');
+      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+        setError('No se pudo iniciar sesión con Google. Intentá de nuevo.');
       }
     } finally {
       setLoading(false);
@@ -52,13 +53,14 @@ export default function LoginScreen() {
     const trimPass = password.trim();
     const trimName = name.trim();
     if (!trimEmail || !trimPass) {
-      Alert.alert('Campos requeridos', 'Completá el email y la contraseña.');
+      setError('Completá el email y la contraseña.');
       return;
     }
     if (mode === 'signup' && !trimName) {
-      Alert.alert('Campos requeridos', 'Ingresá tu nombre.');
+      setError('Ingresá tu nombre.');
       return;
     }
+    setError(null);
     setLoading(true);
     try {
       if (mode === 'signin') {
@@ -67,20 +69,24 @@ export default function LoginScreen() {
         await signUp(trimEmail, trimPass, trimName);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Ocurrió un error.';
-      let userMsg = 'Algo salió mal. Intentá de nuevo.';
-      if (msg.includes('invalid-credential') || msg.includes('wrong-password')) {
-        userMsg = 'Email o contraseña incorrectos.';
-      } else if (msg.includes('user-not-found')) {
-        userMsg = 'No encontramos una cuenta con ese email.';
-      } else if (msg.includes('email-already-in-use')) {
-        userMsg = 'Ya existe una cuenta con ese email. Iniciá sesión.';
-      } else if (msg.includes('weak-password')) {
-        userMsg = 'La contraseña debe tener al menos 6 caracteres.';
-      } else if (msg.includes('invalid-email')) {
-        userMsg = 'El email no es válido.';
+      const msg = err instanceof Error ? err.message : '';
+      if (mode === 'signin') {
+        if (msg.includes('invalid-email')) {
+          setError('El email no es válido.');
+        } else {
+          setError('Email o contraseña incorrectos.');
+        }
+      } else {
+        if (msg.includes('email-already-in-use')) {
+          setError('Ya existe una cuenta con ese email. Iniciá sesión.');
+        } else if (msg.includes('weak-password')) {
+          setError('La contraseña debe tener al menos 6 caracteres.');
+        } else if (msg.includes('invalid-email')) {
+          setError('El email no es válido.');
+        } else {
+          setError('No se pudo crear la cuenta. Intentá de nuevo.');
+        }
       }
-      Alert.alert('Error', userMsg);
     } finally {
       setLoading(false);
     }
@@ -91,6 +97,7 @@ export default function LoginScreen() {
     setEmail('');
     setPassword('');
     setName('');
+    setError(null);
   };
 
   return (
@@ -140,11 +147,17 @@ export default function LoginScreen() {
 
                 <Pressable
                   style={({ pressed }) => [styles.authButton, styles.emailButton, pressed && styles.pressed]}
-                  onPress={() => setMode('signin')}
+                  onPress={() => { setMode('signin'); setError(null); }}
                 >
                   <Mail size={18} color={twColors.foreground} />
                   <Text style={styles.authButtonTextWhite}>Continuar con email</Text>
                 </Pressable>
+
+                {error ? (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                ) : null}
               </Animated.View>
 
               <Animated.View entering={FadeInDown.delay(450).duration(600)} style={styles.footer}>
@@ -178,7 +191,7 @@ export default function LoginScreen() {
                     placeholder="Jose Ivorra"
                     placeholderTextColor={twColors.muted}
                     value={name}
-                    onChangeText={setName}
+                    onChangeText={(v) => { setName(v); clearError(); }}
                     autoCapitalize="words"
                     autoCorrect={false}
                   />
@@ -192,7 +205,7 @@ export default function LoginScreen() {
                   placeholder="tu@email.com"
                   placeholderTextColor={twColors.muted}
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(v) => { setEmail(v); clearError(); }}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -207,7 +220,7 @@ export default function LoginScreen() {
                     placeholder="Mínimo 6 caracteres"
                     placeholderTextColor={twColors.muted}
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(v) => { setPassword(v); clearError(); }}
                     secureTextEntry={!showPass}
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -223,6 +236,12 @@ export default function LoginScreen() {
                   </Pressable>
                 </View>
               </View>
+
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
 
               <Pressable
                 style={[styles.authButton, styles.submitButton, loading && styles.pressed]}
@@ -371,4 +390,13 @@ const styles = StyleSheet.create({
   switchLink: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.primary },
   backBtn: { alignSelf: 'center', paddingVertical: 8 },
   backBtnText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.muted },
+  errorBox: {
+    backgroundColor: twColors.destructive + '18',
+    borderWidth: 1,
+    borderColor: twColors.destructive + '50',
+    borderRadius: twRadius.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  errorText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.destructive, textAlign: 'center' },
 });

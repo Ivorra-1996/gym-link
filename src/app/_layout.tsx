@@ -13,11 +13,15 @@ import "../global.css";
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { WorkoutProvider } from "@/context/WorkoutContext";
+import { setupAndroidChannels, setupNotificationHandler } from "@/services/notifications";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+
+// Configurar el comportamiento de notificaciones al abrir la app
+setupNotificationHandler();
 
 SplashScreen.preventAutoHideAsync();
 
@@ -35,6 +39,10 @@ function InitialLayout() {
   useEffect(() => {
     if (fontsLoaded) SplashScreen.hideAsync();
   }, [fontsLoaded]);
+
+  useEffect(() => {
+    setupAndroidChannels();
+  }, []);
 
   useEffect(() => {
     if (!fontsLoaded || authLoading) return;

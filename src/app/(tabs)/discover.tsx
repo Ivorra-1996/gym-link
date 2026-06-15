@@ -1,6 +1,6 @@
 import { Filter, MapPin } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import UserCard from '@/components/UserCard';
 import {
@@ -67,7 +67,7 @@ const Discover = () => {
             </View>
             <Pressable
               style={styles.filterButton}
-              onPress={() => Alert.alert('Filtros', 'Próximamente.')}
+
             >
               <Filter size={16} color={twColors.foreground} />
             </Pressable>

@@ -6,7 +6,6 @@ import { ArrowLeft, Save } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -32,6 +31,7 @@ export default function EditProfile() {
   const [ciudad, setCiudad] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const uid = auth.currentUser?.uid;
@@ -54,9 +54,10 @@ export default function EditProfile() {
     if (!uid) return;
     const trimNombre = nombre.trim();
     if (!trimNombre) {
-      Alert.alert('Falta el nombre', 'Ingresá tu nombre.');
+      setError('Ingresá tu nombre.');
       return;
     }
+    setError(null);
     setSaving(true);
     try {
       await updateProfile(uid, { displayName: trimNombre });
@@ -67,9 +68,8 @@ export default function EditProfile() {
       );
       refreshUser();
       goBack('/profile');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      Alert.alert('Error al guardar', msg);
+    } catch {
+      setError('No se pudieron guardar los cambios. Intentá de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -147,6 +147,7 @@ export default function EditProfile() {
         </ScrollView>
 
         <View style={styles.footer}>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <Pressable
             style={[styles.saveBtn, saving && { opacity: 0.7 }]}
             onPress={handleSave}
@@ -235,4 +236,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   saveBtnText: { fontSize: 15, fontFamily: twFonts.bold, color: twColors.background },
+  errorText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.destructive, textAlign: 'center', marginBottom: 8 },
 });
