@@ -13,10 +13,10 @@ import {
   Trash2,
   Users,
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -45,11 +45,74 @@ const DEFAULT: SettingsData = {
   notificacionesActivas: false,
 };
 
+type ActiveModal = 'signout' | 'password' | 'delete' | null;
+
+// ── ConfirmModal ───────────────────────────────────────────────────────────────
+
+function ConfirmModal({
+  visible,
+  title,
+  message,
+  confirmLabel,
+  destructive = false,
+  loading = false,
+  error = null,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  title: string;
+  message: string;
+  confirmLabel: string;
+  destructive?: boolean;
+  loading?: boolean;
+  error?: string | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onCancel}>
+      <View style={mStyles.overlay}>
+        <View style={mStyles.card}>
+          <Text style={mStyles.title}>{title}</Text>
+          <Text style={mStyles.message}>{message}</Text>
+          {error ? <Text style={mStyles.error}>{error}</Text> : null}
+          <View style={mStyles.btnRow}>
+            <Pressable style={mStyles.cancelBtn} onPress={onCancel} disabled={loading}>
+              <Text style={mStyles.cancelText}>Cancelar</Text>
+            </Pressable>
+            <Pressable
+              style={[mStyles.confirmBtn, destructive && mStyles.destructiveBtn, loading && mStyles.btnDisabled]}
+              onPress={onConfirm}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color={destructive ? '#fff' : twColors.background} />
+              ) : (
+                <Text style={[mStyles.confirmText, destructive && mStyles.destructiveText]}>
+                  {confirmLabel}
+                </Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ── Main screen ────────────────────────────────────────────────────────────────
+
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const [settings, setSettings] = useState<SettingsData>(DEFAULT);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+
+  const [activeModal, setActiveModal] = useState<ActiveModal>(null);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const uid = auth.currentUser?.uid;
   const isPasswordProvider = auth.currentUser?.providerData.some(
@@ -71,67 +134,76 @@ export default function SettingsScreen() {
     });
   }, [uid]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const openModal = useCallback((type: ActiveModal) => {
+    setModalError(null);
+    setModalLoading(false);
+    setActiveModal(type);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setActiveModal(null);
+    setModalLoading(false);
+    setModalError(null);
+  }, []);
+
   const toggle = async (key: keyof SettingsData, value: boolean) => {
     if (!uid) return;
+    const prev = settings;
     const next = { ...settings, [key]: value };
     setSettings(next);
     setSavingKey(key);
     try {
       await setDoc(doc(db, 'users', uid), { [key]: value }, { merge: true });
     } catch {
-      setSettings(settings);
-      Alert.alert('Error', 'No se pudo guardar el cambio.');
+      setSettings(prev);
+      setToast('No se pudo guardar el cambio.');
     } finally {
       setSavingKey(null);
     }
   };
 
-  const handlePasswordReset = () => {
+  const handlePasswordResetConfirm = async () => {
     const email = auth.currentUser?.email;
     if (!email) return;
-    Alert.alert(
-      'Cambiar contraseña',
-      `Te enviaremos un link de restablecimiento a ${email}`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Enviar email',
-          onPress: () => {
-            sendPasswordResetEmail(auth, email)
-              .then(() => Alert.alert('Email enviado', 'Revisá tu bandeja de entrada.'))
-              .catch(() => Alert.alert('Error', 'No se pudo enviar el email.'));
-          },
-        },
-      ]
-    );
+    setModalLoading(true);
+    setModalError(null);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      closeModal();
+      setToast('Email enviado. Revisá tu bandeja de entrada.');
+    } catch {
+      setModalError('No se pudo enviar el email. Intentá de nuevo.');
+      setModalLoading(false);
+    }
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Eliminar cuenta',
-      'Esta acción es permanente. Se eliminarán tu cuenta y todos tus datos.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: () => {
-            const fbUser = auth.currentUser;
-            if (!fbUser) return;
-            deleteUser(fbUser).catch((err: { code?: string }) => {
-              if (err.code === 'auth/requires-recent-login') {
-                Alert.alert(
-                  'Sesión expirada',
-                  'Cerrá sesión, volvé a ingresar y luego intentá eliminar la cuenta.'
-                );
-              } else {
-                Alert.alert('Error', 'No se pudo eliminar la cuenta.');
-              }
-            });
-          },
-        },
-      ]
-    );
+  const handleSignOutConfirm = async () => {
+    closeModal();
+    await signOut();
+  };
+
+  const handleDeleteConfirm = async () => {
+    const fbUser = auth.currentUser;
+    if (!fbUser) return;
+    setModalLoading(true);
+    setModalError(null);
+    try {
+      await deleteUser(fbUser);
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code;
+      if (code === 'auth/requires-recent-login') {
+        setModalError('Cerrá sesión, volvé a ingresar y luego intentá de nuevo.');
+      } else {
+        setModalError('No se pudo eliminar la cuenta. Intentá de nuevo.');
+      }
+      setModalLoading(false);
+    }
   };
 
   if (loading) {
@@ -141,6 +213,8 @@ export default function SettingsScreen() {
       </View>
     );
   }
+
+  const email = auth.currentUser?.email ?? '';
 
   return (
     <View style={styles.screen}>
@@ -160,13 +234,9 @@ export default function SettingsScreen() {
         <Section title="Cuenta">
           <InfoRow label="Email" value={user?.email ?? '—'} icon={Mail} />
           {isPasswordProvider ? (
-            <ActionRow label="Cambiar contraseña" icon={Shield} onPress={handlePasswordReset} />
+            <ActionRow label="Cambiar contraseña" icon={Shield} onPress={() => openModal('password')} />
           ) : (
-            <InfoRow
-              label="Contraseña"
-              value="Gestionada por Google"
-              icon={Shield}
-            />
+            <InfoRow label="Contraseña" value="Gestionada por Google" icon={Shield} />
           )}
         </Section>
 
@@ -207,12 +277,7 @@ export default function SettingsScreen() {
           <ActionRow
             label="Cerrar sesión"
             icon={LogOut}
-            onPress={() =>
-              Alert.alert('Cerrar sesión', '¿Estás seguro?', [
-                { text: 'Cancelar', style: 'cancel' },
-                { text: 'Cerrar sesión', style: 'destructive', onPress: signOut },
-              ])
-            }
+            onPress={() => openModal('signout')}
           />
         </Section>
 
@@ -222,10 +287,53 @@ export default function SettingsScreen() {
             label="Eliminar cuenta"
             icon={Trash2}
             destructive
-            onPress={handleDeleteAccount}
+            onPress={() => openModal('delete')}
           />
         </Section>
       </ScrollView>
+
+      {/* Toast */}
+      {toast ? (
+        <View style={mStyles.toast}>
+          <Text style={mStyles.toastText}>{toast}</Text>
+        </View>
+      ) : null}
+
+      {/* Modales */}
+      <ConfirmModal
+        visible={activeModal === 'signout'}
+        title="Cerrar sesión"
+        message="¿Estás seguro que querés cerrar sesión?"
+        confirmLabel="Cerrar sesión"
+        destructive
+        loading={modalLoading}
+        error={modalError}
+        onConfirm={handleSignOutConfirm}
+        onCancel={closeModal}
+      />
+
+      <ConfirmModal
+        visible={activeModal === 'password'}
+        title="Cambiar contraseña"
+        message={`Te enviaremos un link de restablecimiento a ${email}`}
+        confirmLabel="Enviar email"
+        loading={modalLoading}
+        error={modalError}
+        onConfirm={handlePasswordResetConfirm}
+        onCancel={closeModal}
+      />
+
+      <ConfirmModal
+        visible={activeModal === 'delete'}
+        title="Eliminar cuenta"
+        message="Esta acción es permanente. Se eliminarán tu cuenta y todos tus datos."
+        confirmLabel="Eliminar"
+        destructive
+        loading={modalLoading}
+        error={modalError}
+        onConfirm={handleDeleteConfirm}
+        onCancel={closeModal}
+      />
     </View>
   );
 }
@@ -243,15 +351,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 type IconComponent = React.ComponentType<{ size: number; color: string }>;
 
-function InfoRow({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  icon: IconComponent;
-}) {
+function InfoRow({ label, value, icon: Icon }: { label: string; value: string; icon: IconComponent }) {
   return (
     <View style={styles.row}>
       <View style={styles.rowIcon}>
@@ -259,9 +359,7 @@ function InfoRow({
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.rowLabel}>{label}</Text>
-        <Text style={styles.rowSub} numberOfLines={1}>
-          {value}
-        </Text>
+        <Text style={styles.rowSub} numberOfLines={1}>{value}</Text>
       </View>
     </View>
   );
@@ -332,6 +430,67 @@ function ToggleRow({
     </View>
   );
 }
+
+// ── Styles ─────────────────────────────────────────────────────────────────────
+
+const mStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: twColors.card,
+    borderRadius: twRadius.sm,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    padding: 24,
+    gap: 12,
+  },
+  title: { fontSize: 16, fontFamily: twFonts.bold, color: twColors.foreground },
+  message: { fontSize: 13, fontFamily: twFonts.regular, color: twColors.muted, lineHeight: 20 },
+  error: { fontSize: 12, fontFamily: twFonts.medium, color: twColors.destructive },
+  btnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.card2,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    alignItems: 'center',
+  },
+  cancelText: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.muted },
+  confirmBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmText: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.background },
+  destructiveBtn: { backgroundColor: twColors.destructive },
+  destructiveText: { color: '#fff' },
+  btnDisabled: { opacity: 0.7 },
+  toast: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    right: 16,
+    backgroundColor: twColors.card,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.primary,
+    borderRadius: twRadius.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  toastText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.foreground },
+});
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: twColors.background },

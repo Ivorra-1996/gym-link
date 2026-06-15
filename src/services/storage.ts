@@ -10,7 +10,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
-import { ActiveSessionState, BodyWeightEntry, Routine, WorkoutSession } from '@/types';
+import { ActiveSessionState, BodyWeightEntry, HydrationLog, Routine, WorkoutSession } from '@/types';
 
 // ── Firestore helpers ─────────────────────────────────────────────────────────
 
@@ -116,9 +116,11 @@ export async function deleteBodyWeightEntry(id: string): Promise<void> {
 // ── Hydration (daily reset — stays on device) ─────────────────────────────────
 
 const HYDRATION_KEY = '@gymlink/hydration';
+const HYDRATION_GOAL_KEY = '@gymlink/hydration_goal';
 
 function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export async function getHydrationGlasses(): Promise<number> {
@@ -137,5 +139,41 @@ export async function setHydrationGlasses(glasses: number): Promise<void> {
     HYDRATION_KEY,
     JSON.stringify({ date: todayStr(), glasses }),
   );
+}
+
+export async function getHydrationGoal(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(HYDRATION_GOAL_KEY);
+    return raw ? parseInt(raw, 10) : 8;
+  } catch {
+    return 8;
+  }
+}
+
+export async function setHydrationGoal(goal: number): Promise<void> {
+  await AsyncStorage.setItem(HYDRATION_GOAL_KEY, String(goal));
+}
+
+// ── Hydration logs (histórico en Firestore) ───────────────────────────────────
+
+const hydrationLogsRef = () => collection(db, 'users', uid(), 'hydrationLogs');
+
+export async function saveHydrationLog(glasses: number, goal: number): Promise<void> {
+  const today = todayStr();
+  await setDoc(doc(db, 'users', uid(), 'hydrationLogs', today), {
+    date: today,
+    glasses,
+    goal,
+    updatedAt: Date.now(),
+  } satisfies HydrationLog);
+}
+
+export async function getHydrationLogs(limitDays = 90): Promise<HydrationLog[]> {
+  try {
+    const snap = await getDocs(query(hydrationLogsRef(), orderBy('date', 'desc')));
+    return snap.docs.slice(0, limitDays).map((d) => d.data() as HydrationLog);
+  } catch {
+    return [];
+  }
 }
 

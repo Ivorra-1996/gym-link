@@ -14,7 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import HydrationTracker from '@/components/HydrationTracker';
 import WorkoutCard from '@/components/WorkoutCard';
-import { getHydrationGlasses, getRoutines, getSessions, setHydrationGlasses } from '@/services/storage';
+import { getHydrationGlasses, getHydrationGoal, getRoutines, getSessions, saveHydrationLog, setHydrationGlasses, setHydrationGoal } from '@/services/storage';
 import { Routine } from '@/types';
 import { calculateStreak, countWeekSessions } from '@/utils/workout';
 import {
@@ -26,6 +26,7 @@ import {
 
 const Index = () => {
   const [glasses, setGlasses] = useState(0);
+  const [goal, setGoal] = useState(8);
   const [quickHovered, setQuickHovered] = useState(false);
   const [firstRoutine, setFirstRoutine] = useState<Routine | null>(null);
   const [streak, setStreak] = useState(0);
@@ -49,6 +50,7 @@ const Index = () => {
   useFocusEffect(
     useCallback(() => {
       getHydrationGlasses().then(setGlasses);
+      getHydrationGoal().then(setGoal);
       getRoutines().then((r) => setFirstRoutine(r[0] ?? null));
       getSessions().then((sessions) => {
         setStreak(calculateStreak(sessions));
@@ -58,16 +60,29 @@ const Index = () => {
     }, [])
   );
 
-  const handleAddGlass = () => {
-    const next = Math.min(glasses + 1, 8);
-    setGlasses(next);
-    setHydrationGlasses(next);
+  const persistHydration = async (nextGlasses: number, nextGoal: number) => {
+    await setHydrationGlasses(nextGlasses);
+    saveHydrationLog(nextGlasses, nextGoal).catch(() => {});
   };
 
-  const handleRemoveGlass = () => {
+  const handleAddGlass = async () => {
+    const next = Math.min(glasses + 1, goal);
+    setGlasses(next);
+    await persistHydration(next, goal);
+  };
+
+  const handleRemoveGlass = async () => {
     const next = Math.max(glasses - 1, 0);
     setGlasses(next);
-    setHydrationGlasses(next);
+    await persistHydration(next, goal);
+  };
+
+  const handleGoalChange = async (newGoal: number) => {
+    const clampedGlasses = Math.min(glasses, newGoal);
+    setGoal(newGoal);
+    if (clampedGlasses !== glasses) setGlasses(clampedGlasses);
+    await setHydrationGoal(newGoal);
+    await persistHydration(clampedGlasses, newGoal);
   };
 
   const handleQuickStart = () => {
@@ -142,9 +157,10 @@ const Index = () => {
           <Animated.View entering={FadeInUp.delay(100)}>
             <HydrationTracker
               glasses={glasses}
-              goal={8}
+              goal={goal}
               onAdd={handleAddGlass}
               onRemove={handleRemoveGlass}
+              onGoalChange={handleGoalChange}
             />
           </Animated.View>
 

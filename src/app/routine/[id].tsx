@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/utils/navigation';
 import { ArrowLeft, Play, SquarePen } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getRoutines } from '@/services/storage';
 import { useWorkout } from '@/context/WorkoutContext';
@@ -14,10 +14,53 @@ import {
   twRadius,
 } from '@/constants/tailwind-runtime-theme';
 
+function ConfirmModal({
+  visible,
+  title,
+  message,
+  confirmLabel,
+  destructive = false,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  title: string;
+  message: string;
+  confirmLabel: string;
+  destructive?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onCancel}>
+      <View style={mStyles.overlay}>
+        <View style={mStyles.card}>
+          <Text style={mStyles.title}>{title}</Text>
+          <Text style={mStyles.message}>{message}</Text>
+          <View style={mStyles.btnRow}>
+            <Pressable style={mStyles.cancelBtn} onPress={onCancel}>
+              <Text style={mStyles.cancelText}>Cancelar</Text>
+            </Pressable>
+            <Pressable
+              style={[mStyles.confirmBtn, destructive && mStyles.destructiveBtn]}
+              onPress={onConfirm}
+            >
+              <Text style={[mStyles.confirmText, destructive && mStyles.destructiveText]}>
+                {confirmLabel}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function RoutinePage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
   const { session, startSession } = useWorkout();
 
   useFocusEffect(
@@ -33,14 +76,7 @@ export default function RoutinePage() {
   const handleStart = () => {
     if (!routine) return;
     if (session) {
-      Alert.alert(
-        'Sesión en progreso',
-        'Ya tenés un entrenamiento activo. ¿Querés descartarlo y empezar este?',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Descartar y empezar', style: 'destructive', onPress: launchSession },
-        ]
-      );
+      setShowDiscardModal(true);
     } else {
       launchSession();
     }
@@ -48,6 +84,7 @@ export default function RoutinePage() {
 
   const launchSession = () => {
     if (!routine) return;
+    setShowDiscardModal(false);
     const initialSession: ActiveSessionState = {
       routineId: routine.id,
       routineName: routine.name,
@@ -153,9 +190,62 @@ export default function RoutinePage() {
           <Text style={styles.startButtonText}>Iniciar Entrenamiento</Text>
         </Pressable>
       </View>
+
+      <ConfirmModal
+        visible={showDiscardModal}
+        title="Sesión en progreso"
+        message="Ya tenés un entrenamiento activo. ¿Querés descartarlo y empezar este?"
+        confirmLabel="Descartar y empezar"
+        destructive
+        onConfirm={launchSession}
+        onCancel={() => setShowDiscardModal(false)}
+      />
     </View>
   );
 }
+
+const mStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: twColors.card,
+    borderRadius: twRadius.sm,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    padding: 24,
+    gap: 12,
+  },
+  title: { fontSize: 16, fontFamily: twFonts.bold, color: twColors.foreground },
+  message: { fontSize: 13, fontFamily: twFonts.regular, color: twColors.muted, lineHeight: 20 },
+  btnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.card2,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    alignItems: 'center',
+  },
+  cancelText: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.muted },
+  confirmBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.primary,
+    alignItems: 'center',
+  },
+  confirmText: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.background },
+  destructiveBtn: { backgroundColor: twColors.destructive },
+  destructiveText: { color: '#fff' },
+});
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: twColors.background },

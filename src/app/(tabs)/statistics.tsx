@@ -6,8 +6,7 @@ import {
   twRadius,
 } from "@/constants/tailwind-runtime-theme";
 import { useRouter } from "expo-router";
-import { goBack } from '@/utils/navigation';
-import { ArrowLeft, ChevronRight, Dumbbell } from "lucide-react-native";
+import { ArrowLeft, ChevronRight, Droplets, Dumbbell } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
   Easing,
@@ -20,11 +19,13 @@ import {
 } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import Svg, { Circle, Line, Polygon } from "react-native-svg";
-import { getSessions } from "@/services/storage";
-import { WorkoutSession } from "@/types";
+import { getHydrationLogs, getSessions } from "@/services/storage";
+import { HydrationLog, WorkoutSession } from "@/types";
 
 const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const size = 320;
+
+// ── Radar chart helpers ────────────────────────────────────────────────────────
 
 function getLast6Months(): { label: string; year: number; month: number }[] {
   const now = new Date();
@@ -77,6 +78,8 @@ const polarToCartesian = (cx: number, cy: number, radius: number, angleDeg: numb
   const angleRad = ((angleDeg - 90) * Math.PI) / 180;
   return { x: cx + radius * Math.cos(angleRad), y: cy + radius * Math.sin(angleRad) };
 };
+
+// ── RadarChart ─────────────────────────────────────────────────────────────────
 
 function RadarChart({
   months,
@@ -158,7 +161,6 @@ function RadarChart({
   }, [targetData, targetAvg]);
 
   const dimensions = animatedData.map((item) => item.dimension);
-
   const center = size / 2;
   const maxRadius = 118;
   const levels = 5;
@@ -238,17 +240,13 @@ function RadarChart({
           {ringPoints.map(({ key, points }) => (
             <Polygon key={key} points={points} fill="none" stroke={twColors.border} strokeWidth={borderWidth.default} />
           ))}
-
           {axisLines.map((line, index) => (
             <Line key={`axis-${index}`} x1={center} y1={center} x2={line.x} y2={line.y} stroke={twColors.border} strokeWidth={borderWidth.default} />
           ))}
-
           {prevMonth && (
             <Polygon points={previousPoints} fill={`${twColors.accent}26`} stroke={twColors.accent} strokeWidth={1.5} strokeDasharray="5 5" />
           )}
-
           <Polygon points={currentPoints} fill={`${twColors.primary}33`} stroke={twColors.primary} strokeWidth={2.5} />
-
           {dimensions.map((_, index) => {
             const point = polarToCartesian(
               center, center,
@@ -262,11 +260,8 @@ function RadarChart({
         <View style={styles.labelsWrap}>
           {scaleTicks.map((tick) => {
             const y = tick === 0 ? center - 8 : center - (maxRadius * tick) / 100 - 8;
-            return (
-              <Text key={`tick-${tick}`} style={[styles.scaleTick, { top: y }]}>{tick}</Text>
-            );
+            return <Text key={`tick-${tick}`} style={[styles.scaleTick, { top: y }]}>{tick}</Text>;
           })}
-
           {dimensions.map((dimension, index) => {
             const labelPoint = labelPoints[index];
             return (
@@ -311,13 +306,148 @@ function RadarChart({
   );
 }
 
+// ── HydrationSection ───────────────────────────────────────────────────────────
+
+const BAR_COUNT = 30;
+const BAR_W = 10;
+const BAR_GAP = 4;
+const BAR_MAX_H = 52;
+
+function getLast30Days(logs: HydrationLog[]) {
+  const today = new Date();
+  return Array.from({ length: BAR_COUNT }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - (BAR_COUNT - 1 - i));
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const log = logs.find((l) => l.date === key);
+    return {
+      key,
+      day: d.getDate(),
+      isToday: i === BAR_COUNT - 1,
+      glasses: log?.glasses ?? 0,
+      goal: log?.goal ?? 8,
+    };
+  });
+}
+
+function HydrationSection({ logs }: { logs: HydrationLog[] }) {
+  const days = getLast30Days(logs);
+
+  const activeDays = days.filter((d) => d.glasses > 0);
+  const avgGlasses =
+    activeDays.length > 0
+      ? Math.round((activeDays.reduce((acc, d) => acc + d.glasses, 0) / activeDays.length) * 10) / 10
+      : 0;
+  const daysGoalMet = days.filter((d) => d.glasses > 0 && d.glasses >= d.goal).length;
+
+  let streak = 0;
+  for (let i = days.length - 1; i >= 0; i--) {
+    const d = days[i];
+    if (i === days.length - 1 && d.glasses === 0) continue;
+    if (d.glasses >= d.goal && d.glasses > 0) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  if (logs.length === 0) {
+    return (
+      <View style={hStyles.card}>
+        <View style={hStyles.headerRow}>
+          <Droplets size={16} color={twColors.primary} />
+          <Text style={hStyles.title}>Hidratación diaria</Text>
+        </View>
+        <Text style={hStyles.emptyText}>
+          Aún no hay registros de hidratación. Empezá a registrar desde el inicio.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={hStyles.card}>
+      <View style={hStyles.headerRow}>
+        <Droplets size={16} color={twColors.primary} />
+        <Text style={hStyles.title}>Hidratación diaria</Text>
+        <Text style={hStyles.subtitle}>últimos 30 días</Text>
+      </View>
+
+      <View style={hStyles.statsRow}>
+        <View style={hStyles.statCard}>
+          <Text style={hStyles.statValue}>{avgGlasses || '—'}</Text>
+          <Text style={hStyles.statLabel}>Prom. vasos</Text>
+        </View>
+        <View style={hStyles.statCard}>
+          <Text style={hStyles.statValue}>{daysGoalMet}</Text>
+          <Text style={hStyles.statLabel}>Meta cumplida</Text>
+        </View>
+        <View style={hStyles.statCard}>
+          <Text style={hStyles.statValue}>{streak > 0 ? `${streak}d` : '—'}</Text>
+          <Text style={hStyles.statLabel}>Racha actual</Text>
+        </View>
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={hStyles.barsContainer}
+      >
+        {days.map(({ key, day, isToday, glasses, goal }) => {
+          const filled = glasses > 0;
+          const metGoal = glasses >= goal && filled;
+          const ratio = filled ? Math.min(glasses / goal, 1) : 0;
+          const barH = Math.max(ratio * BAR_MAX_H, filled ? 4 : 0);
+          return (
+            <View key={key} style={hStyles.barCol}>
+              <View style={[hStyles.barTrack, { height: BAR_MAX_H }]}>
+                {filled ? (
+                  <View
+                    style={[
+                      hStyles.barFill,
+                      { height: barH },
+                      metGoal ? hStyles.barFull : hStyles.barPartial,
+                    ]}
+                  />
+                ) : null}
+              </View>
+              <Text style={[hStyles.dayLabel, isToday && hStyles.dayLabelToday]}>
+                {isToday ? '•' : day % 5 === 0 ? day : ''}
+              </Text>
+            </View>
+          );
+        })}
+      </ScrollView>
+
+      <View style={hStyles.legendRow}>
+        <View style={hStyles.legendItem}>
+          <View style={[hStyles.legendDot, { backgroundColor: twColors.primary }]} />
+          <Text style={hStyles.legendText}>Meta cumplida</Text>
+        </View>
+        <View style={hStyles.legendItem}>
+          <View style={[hStyles.legendDot, { backgroundColor: twColors.primary + '55' }]} />
+          <Text style={hStyles.legendText}>Parcial</Text>
+        </View>
+        <View style={hStyles.legendItem}>
+          <View style={[hStyles.legendDot, { backgroundColor: twColors.border }]} />
+          <Text style={hStyles.legendText}>Sin registro</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ── Statistics screen ──────────────────────────────────────────────────────────
+
 export default function Statistics() {
   const router = useRouter();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  const [hydrationLogs, setHydrationLogs] = useState<HydrationLog[]>([]);
 
   useFocusEffect(
     useCallback(() => {
       getSessions().then(setSessions);
+      getHydrationLogs().then(setHydrationLogs);
     }, []),
   );
 
@@ -349,7 +479,11 @@ export default function Statistics() {
             <RadarChart months={months} monthlyData={data} />
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(220).duration(450)} style={styles.ctaWrap}>
+          <Animated.View entering={FadeInDown.delay(200).duration(450)}>
+            <HydrationSection logs={hydrationLogs} />
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(280).duration(450)} style={styles.ctaWrap}>
             <Pressable style={styles.ctaButton} onPress={() => router.push('/stats' as never)}>
               <Text style={styles.ctaText}>Ver más estadísticas</Text>
               <ChevronRight size={18} color={twColors.primaryForeground} />
@@ -360,6 +494,61 @@ export default function Statistics() {
     </View>
   );
 }
+
+// ── Hydration styles ───────────────────────────────────────────────────────────
+
+const hStyles = StyleSheet.create({
+  card: {
+    backgroundColor: twColors.card,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    borderRadius: twRadius.sm,
+    padding: 16,
+    gap: 14,
+  },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  title: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.foreground, flex: 1 },
+  subtitle: { fontSize: 11, fontFamily: twFonts.regular, color: twColors.muted },
+  emptyText: { fontSize: 13, fontFamily: twFonts.regular, color: twColors.muted, lineHeight: 20 },
+  statsRow: { flexDirection: 'row', gap: 10 },
+  statCard: {
+    flex: 1,
+    backgroundColor: twColors.background,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    borderRadius: twRadius.sm,
+    padding: 12,
+    alignItems: 'center',
+    gap: 3,
+  },
+  statValue: { fontSize: 20, fontFamily: twFonts.bold, color: twColors.primary },
+  statLabel: { fontSize: 10, fontFamily: twFonts.regular, color: twColors.muted, textAlign: 'center' },
+  barsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: BAR_GAP,
+    paddingVertical: 4,
+  },
+  barCol: { alignItems: 'center', gap: 4, width: BAR_W },
+  barTrack: {
+    width: BAR_W,
+    backgroundColor: twColors.border,
+    borderRadius: 4,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  barFill: { width: '100%', borderRadius: 4 },
+  barFull: { backgroundColor: twColors.primary },
+  barPartial: { backgroundColor: twColors.primary + '66' },
+  dayLabel: { fontSize: 8, fontFamily: twFonts.regular, color: twColors.muted, textAlign: 'center' },
+  dayLabelToday: { color: twColors.primary, fontFamily: twFonts.bold },
+  legendRow: { flexDirection: 'row', gap: 14, flexWrap: 'wrap' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendDot: { width: 8, height: 8, borderRadius: 999 },
+  legendText: { fontSize: 10, fontFamily: twFonts.regular, color: twColors.muted },
+});
+
+// ── Main styles ────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: twColors.background },

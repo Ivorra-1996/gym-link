@@ -77,3 +77,10 @@ export interface BodyWeightEntry {
   weight: number;
   notes?: string;
 }
+
+export interface HydrationLog {
+  date: string;      // "YYYY-MM-DD" — clave única por día
+  glasses: number;
+  goal: number;
+  updatedAt: number;
+}
