@@ -163,7 +163,7 @@ export default function SettingsScreen() {
           ) : (
             <InfoRow
               label="Contraseña"
-              value="Gestionada por Google / Apple"
+              value="Gestionada por Google"
               icon={Shield}
             />
           )}

@@ -23,7 +23,7 @@ type Mode = 'home' | 'signin' | 'signup';
 
 export default function LoginScreen() {
   const { signIn, signUp } = useAuth();
-  const { signInWithGoogle, signInWithApple } = useSocialAuth();
+  const { signInWithGoogle } = useSocialAuth();
   const [mode, setMode] = useState<Mode>('home');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,22 +41,6 @@ export default function LoginScreen() {
         Alert.alert('No habilitado', 'Activá Google en Firebase Console → Authentication → Sign-in methods.');
       } else if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
         Alert.alert('Error', 'No se pudo iniciar sesión con Google.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAppleSignIn = async () => {
-    setLoading(true);
-    try {
-      await signInWithApple();
-    } catch (err: unknown) {
-      const code = (err as { code?: string })?.code ?? '';
-      if (code === 'auth/operation-not-allowed') {
-        Alert.alert('No habilitado', 'Activá Apple en Firebase Console → Authentication → Sign-in methods.');
-      } else if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
-        Alert.alert('Error', 'No se pudo iniciar sesión con Apple.');
       }
     } finally {
       setLoading(false);
@@ -146,15 +130,6 @@ export default function LoginScreen() {
                 >
                   <Text style={styles.googleG}>G</Text>
                   <Text style={styles.authButtonTextDark}>Continuar con Google</Text>
-                </Pressable>
-
-                <Pressable
-                  style={({ pressed }) => [styles.authButton, styles.appleButton, pressed && styles.pressed]}
-                  onPress={handleAppleSignIn}
-                  disabled={loading}
-                >
-                  <Text style={styles.appleIcon}></Text>
-                  <Text style={styles.authButtonTextWhite}>Continuar con Apple</Text>
                 </Pressable>
 
                 <View style={styles.divider}>
@@ -351,14 +326,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   googleButton: { backgroundColor: '#ffffff' },
-  appleButton: { backgroundColor: '#111111', borderWidth: 1, borderColor: '#2a2a2a' },
   emailButton: { backgroundColor: 'transparent', borderWidth: 1, borderColor: twColors.border },
   submitButton: { backgroundColor: twColors.primary, marginTop: 4 },
   authButtonTextDark: { fontSize: 15, fontFamily: twFonts.medium, color: '#111111' },
   authButtonTextWhite: { fontSize: 15, fontFamily: twFonts.medium, color: twColors.foreground },
   submitText: { fontSize: 15, fontFamily: twFonts.bold, color: twColors.background },
   googleG: { fontSize: 18, fontFamily: twFonts.bold, color: '#4285F4' },
-  appleIcon: { fontSize: 18, color: '#ffffff', lineHeight: 22 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 },
   dividerLine: { flex: 1, height: 0.5, backgroundColor: twColors.border },
   dividerText: { fontSize: 12, fontFamily: twFonts.regular, color: twColors.muted },

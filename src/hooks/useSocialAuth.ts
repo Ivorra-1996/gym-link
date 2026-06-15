@@ -56,12 +56,5 @@ export function useSocialAuth() {
     await promptAsync();
   };
 
-  const signInWithApple = () => {
-    Alert.alert(
-      'Apple Sign-In',
-      'Apple Sign-In en dispositivos nativos requiere un dev build y una cuenta de Apple Developer.'
-    );
-  };
-
-  return { signInWithGoogle, signInWithApple };
+  return { signInWithGoogle };
 }
