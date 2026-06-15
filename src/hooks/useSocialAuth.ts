@@ -13,7 +13,7 @@ WebBrowser.maybeCompleteAuthSession();
 // 3. Copiá el "ID de cliente web" y pegalo acá
 // 4. En Google Cloud Console → Credenciales → ese mismo cliente web →
 //    Agregá el redirect URI que aparece en los logs de Metro cuando iniciás la app
-const GOOGLE_WEB_CLIENT_ID = '303836816300-s0qerrp02uan7ad032hvf833pgfi9s7b.apps.googleusercontent.com';
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 
 export function useSocialAuth() {
   const [request, response, promptAsync] = Google.useAuthRequest({
@@ -49,11 +49,8 @@ export function useSocialAuth() {
   }, [response]);
 
   const signInWithGoogle = async () => {
-    if (GOOGLE_WEB_CLIENT_ID === 'TU_WEB_CLIENT_ID.apps.googleusercontent.com') {
-      Alert.alert(
-        'Falta configurar',
-        'Reemplazá GOOGLE_WEB_CLIENT_ID en src/hooks/useSocialAuth.ts con tu ID de cliente web de Firebase Console.'
-      );
+    if (!GOOGLE_WEB_CLIENT_ID) {
+      Alert.alert('Falta configurar', 'Definí EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID en el archivo .env.');
       return;
     }
     await promptAsync();

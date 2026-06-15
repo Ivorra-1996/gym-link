@@ -5,13 +5,13 @@ import { getFirestore, initializeFirestore } from "firebase/firestore";
 import { Platform } from "react-native";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDKh1tFXHB8I7P9RQdilXNYV7uqb7TxzAI",
-  authDomain: "gym-link-api.firebaseapp.com",
-  projectId: "gym-link-api",
-  storageBucket: "gym-link-api.firebasestorage.app",
-  messagingSenderId: "303836816300",
-  appId: "1:303836816300:web:cf0adf96ba38a7fe479009",
-  measurementId: "G-0NLD1YGT2N",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY!,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID!,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID!,
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID!,
 };
 
 const isFirstInit = getApps().length === 0;
