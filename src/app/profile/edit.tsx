@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { goBack } from '@/utils/navigation';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { ArrowLeft, Save } from 'lucide-react-native';
@@ -65,7 +66,7 @@ export default function EditProfile() {
         { merge: true }
       );
       refreshUser();
-      router.back();
+      goBack('/(tabs)/profile');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       Alert.alert('Error al guardar', msg);
@@ -95,7 +96,7 @@ export default function EditProfile() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Pressable style={styles.backBtn} onPress={() => router.back()}>
+            <Pressable style={styles.backBtn} onPress={() => goBack('/(tabs)/profile')}>
               <ArrowLeft size={18} color={twColors.primary} />
             </Pressable>
             <Text style={styles.headerTitle}>Editar perfil</Text>

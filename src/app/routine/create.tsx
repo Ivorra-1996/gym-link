@@ -1,4 +1,5 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { goBack } from '@/utils/navigation';
 import {
   ArrowLeft,
   ChevronDown,
@@ -115,7 +116,7 @@ export default function CreateRoutine() {
     setSaving(true);
     try {
       await saveRoutine(routine);
-      router.back();
+      goBack('/(tabs)/train');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       Alert.alert('Error al guardar', msg);
@@ -133,7 +134,7 @@ export default function CreateRoutine() {
         style: 'destructive',
         onPress: async () => {
           await deleteRoutine(routineId);
-          router.back();
+          goBack('/(tabs)/train');
         },
       },
     ]);
@@ -153,7 +154,7 @@ export default function CreateRoutine() {
         >
           <View style={styles.content}>
             <View style={styles.header}>
-              <Pressable style={styles.backBtn} onPress={() => router.back()}>
+              <Pressable style={styles.backBtn} onPress={() => goBack('/(tabs)/train')}>
                 <ArrowLeft size={18} color={twColors.primary} />
               </Pressable>
               <Text style={styles.headerTitle}>

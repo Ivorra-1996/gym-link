@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
+import { goBack } from '@/utils/navigation';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
@@ -161,7 +162,7 @@ export default function BodyWeightTracker() {
         >
           <View style={styles.content}>
             <View style={styles.header}>
-              <Pressable style={styles.backBtn} onPress={() => router.back()}>
+              <Pressable style={styles.backBtn} onPress={() => goBack('/(tabs)/profile')}>
                 <ArrowLeft size={18} color={twColors.primary} />
               </Pressable>
               <Text style={styles.title}>Peso Corporal</Text>

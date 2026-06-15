@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { goBack } from '@/utils/navigation';
 import { ArrowLeft } from 'lucide-react-native';
 import { useState } from 'react';
 import {
@@ -42,7 +43,7 @@ export default function Calculator() {
         >
           <View style={styles.content}>
             <View style={styles.header}>
-              <Pressable style={styles.backBtn} onPress={() => router.back()}>
+              <Pressable style={styles.backBtn} onPress={() => goBack('/(tabs)/profile')}>
                 <ArrowLeft size={18} color={twColors.primary} />
               </Pressable>
               <Text style={styles.title}>Calculadora 1RM</Text>

@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { goBack } from '@/utils/navigation';
 import { deleteUser, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import {
@@ -149,7 +150,7 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
+          <Pressable style={styles.backBtn} onPress={() => goBack('/(tabs)/profile')}>
             <ArrowLeft size={18} color={twColors.primary} />
           </Pressable>
           <Text style={styles.headerTitle}>Configuración</Text>

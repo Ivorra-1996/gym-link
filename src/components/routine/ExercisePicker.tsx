@@ -98,6 +98,7 @@ export default function ExercisePicker({ visible, selectedIds, onConfirm, onClos
         <FlatList
           data={filtered}
           keyExtractor={(e) => e.id}
+          style={styles.exerciseList}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => {
             const selected = picked.has(item.id);
@@ -189,6 +190,7 @@ const styles = StyleSheet.create({
   groupPillActive: { backgroundColor: twColors.primary },
   groupText: { fontSize: 12, fontFamily: twFonts.medium, color: twColors.mutedForeground },
   groupTextActive: { color: twColors.background },
+  exerciseList: { flex: 1 },
   list: { paddingHorizontal: 20, paddingBottom: 16, gap: 8 },
   exerciseRow: {
     flexDirection: 'row',

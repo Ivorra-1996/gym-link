@@ -6,6 +6,7 @@ import {
   twRadius,
 } from "@/constants/tailwind-runtime-theme";
 import { useRouter } from "expo-router";
+import { goBack } from '@/utils/navigation';
 import { ArrowLeft, ChevronRight, Dumbbell } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
@@ -330,7 +331,7 @@ export default function Statistics() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Pressable style={styles.backButton} onPress={() => router.replace('/profile' as never)}>
             <ArrowLeft size={18} color={twColors.primary} />
             <Text style={styles.backText}>Volver</Text>
           </Pressable>

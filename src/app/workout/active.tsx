@@ -2,19 +2,26 @@ import { router } from 'expo-router';
 import { Trophy, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
+  ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import ExerciseLogger from '@/components/workout/ExerciseLogger';
 import RestTimer from '@/components/workout/RestTimer';
 import { useWorkout } from '@/context/WorkoutContext';
 import { getLastSessionForRoutine, getSessions, saveSession } from '@/services/storage';
 import { SessionExercise, WorkoutSession } from '@/types';
-import { calculateVolume, detectPRs, formatDuration, generateId } from '@/utils/workout';
+import { PR, calculateVolume, detectPRs, formatDuration, generateId } from '@/utils/workout';
 import {
   borderWidth,
   twColors,
@@ -48,6 +55,10 @@ export default function ActiveWorkout() {
   const [lastSessionExercises, setLastSessionExercises] = useState<
     Record<string, SessionExercise>
   >({});
+  const [prModal, setPrModal] = useState<PR[] | null>(null);
+  const [showFinishConfirm, setShowFinishConfirm] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -77,73 +88,56 @@ export default function ActiveWorkout() {
 
   const currentEx = session.exercises[session.currentExerciseIndex];
 
-  const handleFinish = () => {
-    Alert.alert('Finalizar entrenamiento', '¿Seguro que querés terminar?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Finalizar',
-        onPress: async () => {
-          const now = Date.now();
-          const durationSecs = Math.floor((now - session.startedAt) / 1000);
+  const doFinish = async () => {
+    setShowFinishConfirm(false);
+    setIsSaving(true);
+    try {
+      const now = Date.now();
+      const durationSecs = Math.floor((now - session.startedAt) / 1000);
 
-          const exercises: SessionExercise[] = session.exercises.map((ex) => ({
-            libraryId: ex.libraryId,
-            name: ex.name,
-            sets: ex.sets
-              .filter((s) => s.completed)
-              .map((s) => ({ reps: s.reps, weight: s.weight })),
-          }));
+      const exercises: SessionExercise[] = session.exercises.map((ex) => ({
+        libraryId: ex.libraryId,
+        name: ex.name,
+        sets: ex.sets
+          .filter((s) => s.completed)
+          .map((s) => ({ reps: s.reps, weight: s.weight })),
+      }));
 
-          const totalVolume = exercises.reduce(
-            (acc, ex) => acc + ex.sets.reduce((s, set) => s + calculateVolume(set.weight, set.reps), 0),
-            0
-          );
+      const totalVolume = exercises.reduce(
+        (acc, ex) => acc + ex.sets.reduce((s, set) => s + calculateVolume(set.weight, set.reps), 0),
+        0
+      );
 
-          const ws: WorkoutSession = {
-            id: generateId(),
-            routineId: session.routineId,
-            routineName: session.routineName,
-            startedAt: session.startedAt,
-            endedAt: now,
-            durationSeconds: durationSecs,
-            exercises,
-            totalVolume,
-          };
+      const ws: WorkoutSession = {
+        id: generateId(),
+        routineId: session.routineId,
+        routineName: session.routineName,
+        startedAt: session.startedAt,
+        endedAt: now,
+        durationSeconds: durationSecs,
+        exercises,
+        totalVolume,
+      };
 
-          // PR detection — compare against ALL previous sessions
-          const allSessions = await getSessions();
-          const prs = detectPRs(ws, allSessions);
+      const allSessions = await getSessions();
+      const prs = detectPRs(ws, allSessions);
+      await saveSession(ws);
 
-          await saveSession(ws);
-          endSession();
-
-          if (prs.length > 0) {
-            const prText = prs.map((p) => `🏆 ${p.name}: ${p.weight} kg`).join('\n');
-            Alert.alert(
-              '¡Nuevos Records Personales!',
-              prText,
-              [{ text: 'Genial!', onPress: () => router.replace('/' as never) }]
-            );
-          } else {
-            router.replace('/' as never);
-          }
-        },
-      },
-    ]);
+      if (prs.length > 0) {
+        setPrModal(prs);
+      } else {
+        endSession();
+        router.replace('/' as never);
+      }
+    } catch {
+      setIsSaving(false);
+    }
   };
 
-  const handleDiscard = () => {
-    Alert.alert('Descartar sesión', 'Se perderá todo el progreso de esta sesión.', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Descartar',
-        style: 'destructive',
-        onPress: () => {
-          endSession();
-          router.replace('/' as never);
-        },
-      },
-    ]);
+  const doDiscard = () => {
+    setShowDiscardConfirm(false);
+    endSession();
+    router.replace('/' as never);
   };
 
   const handleAddTime = (extra: number) => {
@@ -159,7 +153,7 @@ export default function ActiveWorkout() {
           <Text style={styles.routineName} numberOfLines={1}>{session.routineName}</Text>
           <Text style={styles.elapsedTime}>{formatDuration(elapsed)}</Text>
         </View>
-        <Pressable style={styles.discardBtn} onPress={handleDiscard}>
+        <Pressable style={styles.discardBtn} onPress={() => setShowDiscardConfirm(true)}>
           <X size={16} color={twColors.muted} />
         </Pressable>
       </View>
@@ -246,34 +240,314 @@ export default function ActiveWorkout() {
         {/* Navigation */}
         <View style={styles.navRow}>
           <Pressable
-            style={[
-              styles.navBtn,
-              session.currentExerciseIndex === 0 && styles.navBtnDisabled,
-            ]}
+            style={[styles.navBtn, session.currentExerciseIndex === 0 && styles.navBtnDisabled]}
             onPress={() => setCurrentExercise(Math.max(0, session.currentExerciseIndex - 1))}
             disabled={session.currentExerciseIndex === 0}
           >
             <Text style={styles.navBtnText}>← Anterior</Text>
           </Pressable>
-
-          {session.currentExerciseIndex < session.exercises.length - 1 ? (
-            <Pressable
-              style={styles.navBtn}
-              onPress={() => setCurrentExercise(session.currentExerciseIndex + 1)}
-            >
-              <Text style={styles.navBtnText}>Siguiente →</Text>
-            </Pressable>
-          ) : (
-            <Pressable style={[styles.navBtn, styles.navBtnFinish]} onPress={handleFinish}>
-              <Trophy size={14} color={twColors.background} />
-              <Text style={[styles.navBtnText, { color: twColors.background }]}>Finalizar</Text>
-            </Pressable>
-          )}
+          <Pressable
+            style={[
+              styles.navBtn,
+              session.currentExerciseIndex === session.exercises.length - 1 && styles.navBtnDisabled,
+            ]}
+            onPress={() => setCurrentExercise(session.currentExerciseIndex + 1)}
+            disabled={session.currentExerciseIndex === session.exercises.length - 1}
+          >
+            <Text style={styles.navBtnText}>Siguiente →</Text>
+          </Pressable>
         </View>
+
+        <Pressable
+          style={[styles.finishBtn, isSaving && styles.finishBtnDisabled]}
+          onPress={() => setShowFinishConfirm(true)}
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <ActivityIndicator size="small" color={twColors.background} />
+          ) : (
+            <>
+              <Trophy size={15} color={twColors.background} />
+              <Text style={styles.finishBtnText}>Finalizar entrenamiento</Text>
+            </>
+          )}
+        </Pressable>
       </ScrollView>
+
+      {/* Confirm: finish */}
+      {showFinishConfirm && (
+        <ConfirmModal
+          title="Finalizar entrenamiento"
+          message="¿Seguro que querés terminar la sesión?"
+          confirmLabel="Finalizar"
+          onConfirm={doFinish}
+          onCancel={() => setShowFinishConfirm(false)}
+        />
+      )}
+
+      {/* Confirm: discard */}
+      {showDiscardConfirm && (
+        <ConfirmModal
+          title="Descartar sesión"
+          message="Se perderá todo el progreso de esta sesión."
+          confirmLabel="Descartar"
+          destructive
+          onConfirm={doDiscard}
+          onCancel={() => setShowDiscardConfirm(false)}
+        />
+      )}
+
+      {/* PR modal */}
+      {prModal && (
+        <PRModal
+          prs={prModal}
+          onDismiss={() => {
+            setPrModal(null);
+            endSession();
+            router.replace('/' as never);
+          }}
+        />
+      )}
     </View>
   );
 }
+
+// ── Confirm Modal ────────────────────────────────────────────────────────────
+
+function ConfirmModal({
+  title,
+  message,
+  confirmLabel,
+  destructive,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  destructive?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const scale = useSharedValue(0.9);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    scale.value = withSpring(1, { damping: 18, stiffness: 240 });
+    opacity.value = withTiming(1, { duration: 180 });
+  }, []);
+
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Modal transparent visible onRequestClose={onCancel}>
+      <View style={confirmStyles.overlay}>
+        <Animated.View style={[confirmStyles.card, cardStyle]}>
+          <Text style={confirmStyles.title}>{title}</Text>
+          <Text style={confirmStyles.message}>{message}</Text>
+          <View style={confirmStyles.btnRow}>
+            <Pressable style={confirmStyles.cancelBtn} onPress={onCancel}>
+              <Text style={confirmStyles.cancelText}>Cancelar</Text>
+            </Pressable>
+            <Pressable
+              style={[
+                confirmStyles.confirmBtn,
+                destructive ? confirmStyles.confirmBtnDestructive : confirmStyles.confirmBtnPrimary,
+              ]}
+              onPress={onConfirm}
+            >
+              <Text style={confirmStyles.confirmText}>{confirmLabel}</Text>
+            </Pressable>
+          </View>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+// ── PR Modal ────────────────────────────────────────────────────────────────
+
+function PRModal({ prs, onDismiss }: { prs: PR[]; onDismiss: () => void }) {
+  const scale = useSharedValue(0.85);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    scale.value = withSpring(1, { damping: 16, stiffness: 220 });
+    opacity.value = withTiming(1, { duration: 220 });
+  }, []);
+
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Modal transparent visible onRequestClose={onDismiss}>
+      <View style={prStyles.overlay}>
+        <Animated.View style={[prStyles.card, cardStyle]}>
+          <View style={prStyles.trophyWrap}>
+            <Trophy size={38} color={twColors.background} />
+          </View>
+          <Text style={prStyles.title}>¡Nuevos Records!</Text>
+          <Text style={prStyles.subtitle}>Superaste tus marcas personales</Text>
+
+          <View style={prStyles.list}>
+            {prs.map((pr, i) => (
+              <View
+                key={pr.libraryId}
+                style={[prStyles.prRow, i < prs.length - 1 && prStyles.prRowBorder]}
+              >
+                <Text style={prStyles.prName} numberOfLines={1}>{pr.name}</Text>
+                <Text style={prStyles.prWeight}>{pr.weight} kg</Text>
+              </View>
+            ))}
+          </View>
+
+          <Pressable style={prStyles.btn} onPress={onDismiss}>
+            <Text style={prStyles.btnText}>¡A seguir creciendo!</Text>
+          </Pressable>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+// ── Styles ───────────────────────────────────────────────────────────────────
+
+const confirmStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  card: {
+    width: '100%',
+    backgroundColor: twColors.card,
+    borderRadius: 16,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 20,
+    gap: 8,
+  },
+  title: { fontSize: 17, fontFamily: twFonts.bold, color: twColors.foreground },
+  message: { fontSize: 14, fontFamily: twFonts.regular, color: twColors.muted, lineHeight: 20 },
+  btnRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.card2,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    alignItems: 'center',
+  },
+  cancelText: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.foreground },
+  confirmBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: twRadius.sm,
+    alignItems: 'center',
+  },
+  confirmBtnPrimary: { backgroundColor: twColors.primary },
+  confirmBtnDestructive: { backgroundColor: twColors.destructive },
+  confirmText: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.background },
+});
+
+const prStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.78)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  card: {
+    width: '100%',
+    backgroundColor: twColors.card,
+    borderRadius: 20,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    alignItems: 'center',
+    paddingTop: 32,
+    paddingBottom: 28,
+    paddingHorizontal: 24,
+    gap: 6,
+  },
+  trophyWrap: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    backgroundColor: twColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  title: {
+    fontSize: 22,
+    fontFamily: twFonts.bold,
+    color: twColors.foreground,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 13,
+    fontFamily: twFonts.regular,
+    color: twColors.muted,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  list: {
+    width: '100%',
+    backgroundColor: twColors.card2,
+    borderRadius: twRadius.sm,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    marginVertical: 8,
+    overflow: 'hidden',
+  },
+  prRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  prRowBorder: {
+    borderBottomWidth: borderWidth.default,
+    borderBottomColor: twColors.border,
+  },
+  prName: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: twFonts.medium,
+    color: twColors.foreground,
+    marginRight: 12,
+  },
+  prWeight: {
+    fontSize: 16,
+    fontFamily: twFonts.bold,
+    color: twColors.primary,
+  },
+  btn: {
+    marginTop: 6,
+    width: '100%',
+    backgroundColor: twColors.primary,
+    borderRadius: twRadius.sm,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  btnText: {
+    fontSize: 15,
+    fontFamily: twFonts.bold,
+    color: twColors.background,
+  },
+});
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: twColors.background },
@@ -302,6 +576,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     gap: 8,
+    alignItems: 'center',
   },
   exerciseTab: {
     paddingHorizontal: 14,
@@ -350,7 +625,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 32,
-    gap: 16,
+    gap: 12,
   },
   navRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
   navBtn: {
@@ -366,6 +641,16 @@ const styles = StyleSheet.create({
     borderColor: twColors.border,
   },
   navBtnDisabled: { opacity: 0.35 },
-  navBtnFinish: { backgroundColor: twColors.primary, borderColor: twColors.primary },
   navBtnText: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.foreground },
+  finishBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 15,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.primary,
+  },
+  finishBtnDisabled: { opacity: 0.6 },
+  finishBtnText: { fontSize: 15, fontFamily: twFonts.bold, color: twColors.background },
 });

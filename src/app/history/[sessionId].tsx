@@ -1,4 +1,5 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { goBack } from '@/utils/navigation';
 import { ArrowLeft, Clock, TrendingUp } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -48,7 +49,7 @@ export default function SessionDetail() {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <Pressable style={styles.backBtn} onPress={() => router.back()}>
+            <Pressable style={styles.backBtn} onPress={() => goBack('/history')}>
               <ArrowLeft size={18} color={twColors.primary} />
             </Pressable>
           </View>

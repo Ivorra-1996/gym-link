@@ -5,7 +5,7 @@ import {
   twFonts,
   twRadius,
 } from "@/constants/tailwind-runtime-theme";
-import { useRouter } from "expo-router";
+import { router } from 'expo-router';
 import { ArrowLeft, TrendingUp } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
@@ -134,7 +134,6 @@ function VolumeLineChart({ data }: { data: { label: string; value: number }[] })
 // ── Main screen ────────────────────────────────────────────────────────────────
 
 export default function Stats() {
-  const router = useRouter();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
 
   useFocusEffect(
@@ -183,7 +182,7 @@ export default function Stats() {
     <View style={styles.screen}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Pressable style={styles.backButton} onPress={() => router.replace('/statistics' as never)}>
             <ArrowLeft size={18} color={twColors.primary} />
             <Text style={styles.backText}>Volver</Text>
           </Pressable>

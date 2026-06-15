@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { goBack } from '@/utils/navigation';
 import { ArrowLeft, Play, SquarePen } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -81,7 +82,7 @@ export default function RoutinePage() {
     return (
       <View style={styles.statusContainer}>
         <Text style={styles.statusText}>Rutina no encontrada</Text>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => goBack('/(tabs)/train')}>
           <Text style={[styles.statusText, { color: twColors.primary, marginTop: 12 }]}>Volver</Text>
         </Pressable>
       </View>
@@ -97,7 +98,7 @@ export default function RoutinePage() {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <Pressable style={styles.backButton} onPress={() => router.back()}>
+            <Pressable style={styles.backButton} onPress={() => goBack('/(tabs)/train')}>
               <ArrowLeft size={18} color={twColors.primary} />
               <Text style={styles.backText}>Volver</Text>
             </Pressable>
