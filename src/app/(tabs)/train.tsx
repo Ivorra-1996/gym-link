@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { Calendar, Plus } from 'lucide-react-native';
+import { Calendar, ChevronRight, History, Plus, Zap } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -129,6 +129,30 @@ const Train = () => {
               ))}
             </View>
           )}
+
+          {/* Herramientas */}
+          <Animated.View entering={FadeInUp.delay(200)} style={styles.toolsSection}>
+            <Text style={styles.sectionTitle}>Herramientas</Text>
+            <View style={styles.toolsList}>
+              {[
+                { icon: History, label: 'Historial de entrenos', href: '/history' },
+                { icon: Zap,     label: 'Calculadora 1RM',       href: '/tools/calculator' },
+              ].map(({ icon: Icon, label, href }) => (
+                <Pressable
+                  key={label}
+                  style={styles.toolRow}
+                  onPress={() => router.push(href as never)}
+                >
+                  <View style={styles.toolIconWrap}>
+                    <Icon size={15} color={twColors.primary} />
+                  </View>
+                  <Text style={styles.toolLabel}>{label}</Text>
+                  <ChevronRight size={14} color={twColors.muted} />
+                </Pressable>
+              ))}
+            </View>
+          </Animated.View>
+
         </View>
       </ScrollView>
     </View>
@@ -211,6 +235,33 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   createBtnText: { fontSize: 13, fontFamily: twFonts.bold, color: twColors.background },
+
+  toolsSection: { gap: 10 },
+  toolsList: {
+    backgroundColor: twColors.card,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    borderRadius: twRadius.sm,
+    overflow: 'hidden',
+  },
+  toolRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: borderWidth.default,
+    borderBottomColor: twColors.border,
+  },
+  toolIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.primary + '1A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toolLabel: { flex: 1, fontSize: 14, fontFamily: twFonts.medium, color: twColors.foreground },
 });
 
 export default Train;

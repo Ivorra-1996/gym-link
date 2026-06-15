@@ -2,10 +2,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Href, router } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import {
-  Calendar,
   ChevronRight,
   Flame,
-  LogOut,
   Pencil,
   Settings,
   TrendingUp,
@@ -31,15 +29,8 @@ import {
 } from '@/constants/tailwind-runtime-theme';
 
 const menuItems = [
-  {
-    icon: TrendingUp,
-    label: 'Estadísticas mensual',
-    count: '',
-    href: '/statistics',
-  },
-  { icon: Calendar, label: 'Historial de entrenos', count: '', href: '/history' },
-  { icon: Zap, label: 'Calculadora 1RM', count: '', href: '/tools/calculator' },
-  { icon: Flame, label: 'Peso Corporal', count: '', href: '/tools/bodyweight' },
+  { icon: TrendingUp, label: 'Estadísticas mensuales', count: '', href: '/statistics' },
+  { icon: Flame,      label: 'Peso Corporal',          count: '', href: '/tools/bodyweight' },
 ];
 
 const Profile = () => {
@@ -51,7 +42,7 @@ const Profile = () => {
   const [unlockedIds, setUnlockedIds] = useState<Set<string>>(new Set());
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [selectedAchievement, setSelectedAchievement] = useState<AchievementDef | null>(null);
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
 
   useFocusEffect(
     useCallback(() => {
@@ -79,7 +70,6 @@ const Profile = () => {
   const stats = [
     { value: String(totalSessions), label: 'Entrenos' },
     { value: streak > 0 ? String(streak) : '0', label: 'Racha' },
-    { value: '—', label: 'Conexiones' },
   ];
 
   return (
@@ -92,17 +82,12 @@ const Profile = () => {
         <View style={styles.content}>
           <View style={styles.header}>
             <Text style={styles.title}>Perfil</Text>
-            <View style={styles.headerActions}>
-              <Pressable style={styles.settingsButton} onPress={signOut}>
-                <LogOut size={16} color={twColors.muted} />
-              </Pressable>
-              <Pressable
-                style={styles.settingsButton}
-                onPress={() => router.push('/settings' as Href)}
-              >
-                <Settings size={16} color={twColors.foreground} />
-              </Pressable>
-            </View>
+            <Pressable
+              style={styles.settingsButton}
+              onPress={() => router.push('/settings' as Href)}
+            >
+              <Settings size={16} color={twColors.foreground} />
+            </Pressable>
           </View>
 
           <Animated.View entering={FadeInUp.delay(50)} style={styles.profileCard}>
