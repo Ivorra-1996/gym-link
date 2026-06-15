@@ -102,8 +102,9 @@ export default function CreateRoutine() {
     try {
       await saveRoutine(routine);
       router.back();
-    } catch {
-      Alert.alert('Error', 'No se pudo guardar la rutina. Intentá de nuevo.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      Alert.alert('Error al guardar', msg);
     } finally {
       setSaving(false);
     }
@@ -245,18 +246,11 @@ export default function CreateRoutine() {
         </ScrollView>
 
         <View style={styles.saveFooter}>
-          <Pressable
-            style={[styles.saveBtn, saving && { opacity: 0.7 }]}
-            onPress={handleSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator color={twColors.background} />
-            ) : (
-              <Text style={styles.saveBtnText}>
-                {isEditing ? 'Guardar cambios' : 'Crear rutina'}
-              </Text>
-            )}
+          <Pressable style={[styles.saveBtn, saving && { opacity: 0.7 }]} onPress={handleSave} disabled={saving}>
+            {saving
+              ? <ActivityIndicator color={twColors.background} />
+              : <Text style={styles.saveBtnText}>{isEditing ? 'Guardar cambios' : 'Crear rutina'}</Text>
+            }
           </Pressable>
         </View>
 

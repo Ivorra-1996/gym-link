@@ -63,7 +63,7 @@ function InitialLayout() {
           name="workout/active"
           options={{ gestureEnabled: false, animation: "slide_from_bottom" }}
         />
-        <Stack.Screen name="history" />
+        <Stack.Screen name="history/index" />
         <Stack.Screen name="history/[sessionId]" />
         <Stack.Screen name="tools/calculator" />
         <Stack.Screen name="tools/bodyweight" />

@@ -25,7 +25,6 @@ async function ensureUserProfile(uid: string, email: string, displayName: string
   const ref = doc(db, 'users', uid);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
-    // New user — create full profile matching the app's schema
     await setDoc(ref, {
       uid,
       email,
@@ -47,10 +46,9 @@ async function ensureUserProfile(uid: string, email: string, displayName: string
       objetivosMatch: [],
       horarios: [],
       fechaNacimiento: null,
-      fechaRegistro: new Date(),
+      fechaRegistro: new Date().toISOString(),
     });
   } else {
-    // Existing doc — fill in critical fields that may be empty
     await setDoc(ref, { uid, email, displayName }, { merge: true });
   }
 }
