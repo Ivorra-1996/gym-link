@@ -20,6 +20,7 @@ export interface Routine {
   name: string;
   muscleGroup: string;
   exercises: RoutineExercise[];
+  days?: number[];   // 0=Lun … 6=Dom
   createdAt: number;
   updatedAt: number;
 }

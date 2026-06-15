@@ -27,6 +27,8 @@ const Train = () => {
   const [trainedDays, setTrainedDays] = useState<number[]>([]);
   const todayIndex = getTodayDayIndex();
 
+  const plannedDays = new Set(routines.flatMap((r) => r.days ?? []));
+
   useFocusEffect(
     useCallback(() => {
       getRoutines().then(setRoutines);
@@ -66,6 +68,7 @@ const Train = () => {
               {weekDays.map((d, i) => {
                 const trained = trainedDays.includes(i);
                 const isToday = i === todayIndex;
+                const planned = plannedDays.has(i);
                 return (
                   <View
                     key={d}
@@ -80,11 +83,13 @@ const Train = () => {
                         styles.dayText,
                         trained && styles.dayTextTrained,
                         isToday && styles.dayTextToday,
+                        planned && !trained && styles.dayTextPlanned,
                       ]}
                     >
                       {d}
                     </Text>
                     {trained && <View style={styles.dayDot} />}
+                    {planned && !trained && <View style={styles.dayDotPlanned} />}
                   </View>
                 );
               })}
@@ -118,6 +123,7 @@ const Train = () => {
                     exercises={r.exercises.length}
                     duration={`${r.exercises.length * 8} min`}
                     calories={`${r.exercises.length * 60} kcal`}
+                    days={r.days}
                   />
                 </Animated.View>
               ))}
@@ -179,6 +185,8 @@ const styles = StyleSheet.create({
   dayTextTrained: { color: twColors.primary },
   dayTextToday: { color: twColors.primary, fontFamily: twFonts.bold },
   dayDot: { marginTop: 4, width: 5, height: 5, borderRadius: 999, backgroundColor: twColors.primary },
+  dayTextPlanned: { color: twColors.foreground },
+  dayDotPlanned: { marginTop: 4, width: 5, height: 5, borderRadius: 999, borderWidth: 1.5, borderColor: twColors.primary },
   sectionTitle: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.foreground, marginBottom: -8 },
   routinesList: { gap: 12 },
   emptyCard: {

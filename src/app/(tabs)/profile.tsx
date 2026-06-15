@@ -95,7 +95,7 @@ const Profile = () => {
               </Pressable>
               <Pressable
                 style={styles.settingsButton}
-                onPress={() => Alert.alert('Configuración', 'Próximamente.')}
+                onPress={() => router.push('/settings' as Href)}
               >
                 <Settings size={16} color={twColors.foreground} />
               </Pressable>

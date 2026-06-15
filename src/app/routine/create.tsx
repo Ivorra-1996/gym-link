@@ -37,6 +37,7 @@ export default function CreateRoutine() {
 
   const [name, setName] = useState('');
   const [muscleGroup, setMuscleGroup] = useState('');
+  const [days, setDays] = useState<number[]>([]);
   const [exercises, setExercises] = useState<RoutineExercise[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -48,6 +49,7 @@ export default function CreateRoutine() {
       if (found) {
         setName(found.name);
         setMuscleGroup(found.muscleGroup);
+        setDays(found.days ?? []);
         setExercises(found.exercises);
       }
     });
@@ -106,6 +108,7 @@ export default function CreateRoutine() {
       name: name.trim(),
       muscleGroup: muscleGroup.trim() || 'General',
       exercises,
+      days,
       createdAt: now,
       updatedAt: now,
     };
@@ -183,6 +186,32 @@ export default function CreateRoutine() {
                 placeholderTextColor={twColors.muted}
                 style={styles.input}
               />
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Días de la semana</Text>
+              <View style={styles.daysRow}>
+                {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d, i) => {
+                  const active = days.includes(i);
+                  return (
+                    <Pressable
+                      key={d}
+                      style={[styles.dayPill, active && styles.dayPillActive]}
+                      onPress={() =>
+                        setDays((prev) =>
+                          prev.includes(i)
+                            ? prev.filter((x) => x !== i)
+                            : [...prev, i].sort((a, b) => a - b)
+                        )
+                      }
+                    >
+                      <Text style={[styles.dayPillText, active && styles.dayPillTextActive]}>
+                        {d}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
 
             <View style={styles.exercisesSection}>
@@ -376,6 +405,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  daysRow: { flexDirection: 'row', gap: 6 },
+  dayPill: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 9,
+    borderRadius: twRadius.sm,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    backgroundColor: twColors.card2,
+  },
+  dayPillActive: {
+    backgroundColor: twColors.primary + '20',
+    borderColor: twColors.primary,
+  },
+  dayPillText: { fontSize: 12, fontFamily: twFonts.bold, color: twColors.muted },
+  dayPillTextActive: { color: twColors.primary },
   reorderBtns: { gap: 1 },
   reorderBtn: { padding: 2 },
   exerciseName: {

@@ -17,9 +17,12 @@ interface WorkoutCardProps {
   duration: string;
   calories: string;
   exercises: number;
+  days?: number[];
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const DAY_LABELS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
 const WorkoutCard = ({
   id,
@@ -28,6 +31,7 @@ const WorkoutCard = ({
   duration,
   calories,
   exercises,
+  days,
 }: WorkoutCardProps) => {
   const scale = useSharedValue(1);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -64,6 +68,21 @@ const WorkoutCard = ({
 
             <Text style={styles.metaText}>{exercises} ejercicios</Text>
           </View>
+
+          {days && days.length > 0 && (
+            <View style={styles.daysRow}>
+              {DAY_LABELS.map((d, i) => {
+                const active = days.includes(i);
+                return (
+                  <View key={d} style={[styles.dayChip, active && styles.dayChipActive]}>
+                    <Text style={[styles.dayChipText, active && styles.dayChipTextActive]}>
+                      {d}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         <View style={styles.chevronCircle}>
@@ -123,6 +142,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: twFonts.regular,
   },
+  daysRow: { flexDirection: 'row', gap: 4, marginTop: 8 },
+  dayChip: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: twColors.card2,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+  },
+  dayChipActive: {
+    backgroundColor: twColors.primary + '20',
+    borderColor: twColors.primary,
+  },
+  dayChipText: { fontSize: 9, fontFamily: twFonts.bold, color: twColors.muted },
+  dayChipTextActive: { color: twColors.primary },
   chevronCircle: {
     width: 40,
     height: 40,

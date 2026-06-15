@@ -65,6 +65,7 @@ function InitialLayout() {
         <Stack.Screen name="tools/calculator" />
         <Stack.Screen name="tools/bodyweight" />
         <Stack.Screen name="profile/edit" />
+        <Stack.Screen name="settings" />
       </Stack>
     </ThemeProvider>
   );
