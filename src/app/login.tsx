@@ -1,7 +1,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { useSocialAuth } from '@/hooks/useSocialAuth';
 import { twColors, twFonts, twRadius } from '@/constants/tailwind-runtime-theme';
-import { Dumbbell, Eye, EyeOff, Mail } from 'lucide-react-native';
+import { Check, Dumbbell, Eye, EyeOff, Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,18 +20,69 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 type Mode = 'home' | 'signin' | 'signup';
 
+// ── Seguridad de contraseña ────────────────────────────────────────────────────
+
+const PASSWORD_REQS = [
+  { key: 'length', label: 'Mínimo 12 caracteres',  test: (p: string) => p.length >= 12 },
+  { key: 'upper',  label: 'Una letra mayúscula',    test: (p: string) => /[A-Z]/.test(p) },
+  { key: 'lower',  label: 'Una letra minúscula',    test: (p: string) => /[a-z]/.test(p) },
+  { key: 'number', label: 'Un número',              test: (p: string) => /[0-9]/.test(p) },
+  { key: 'symbol', label: 'Un símbolo (!@#$…)',     test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+] as const;
+
+const STRENGTH_LEVELS = [
+  { label: 'Muy débil', color: '#ef4444' },
+  { label: 'Muy débil', color: '#ef4444' },
+  { label: 'Débil',     color: '#f97316' },
+  { label: 'Regular',   color: '#eab308' },
+  { label: 'Fuerte',    color: '#22c55e' },
+  { label: 'Muy fuerte', color: twColors.primary },
+];
+
+function getScore(password: string): number {
+  return PASSWORD_REQS.filter((r) => r.test(password)).length;
+}
+
+// ── Sub-componentes ────────────────────────────────────────────────────────────
+
+function ReqRow({ met, label }: { met: boolean; label: string }) {
+  return (
+    <View style={styles.reqRow}>
+      <View style={[styles.reqDot, met && styles.reqDotMet]}>
+        {met && <Check size={8} color={twColors.background} strokeWidth={3} />}
+      </View>
+      <Text style={[styles.reqText, met && styles.reqTextMet]}>{label}</Text>
+    </View>
+  );
+}
+
+// ── Pantalla principal ─────────────────────────────────────────────────────────
+
 export default function LoginScreen() {
   const { signIn, signUp } = useAuth();
-  const { signInWithGoogle } = useSocialAuth((msg) => setError(msg));
   const [mode, setMode] = useState<Mode>('home');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
+
   const [showPass, setShowPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { signInWithGoogle } = useSocialAuth((msg) => setError(msg));
+
   const clearError = () => { if (error) setError(null); };
+
+  const score = getScore(password);
+  const strength = STRENGTH_LEVELS[score];
+  const allReqsMet = score === PASSWORD_REQS.length;
+  const confirmMatches = confirmPassword.length > 0 && confirmPassword === password;
+  const confirmMismatch = confirmPassword.length > 0 && confirmPassword !== password;
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleGoogleSignIn = async () => {
     setError(null);
@@ -52,14 +103,27 @@ export default function LoginScreen() {
     const trimEmail = email.trim();
     const trimPass = password.trim();
     const trimName = name.trim();
+
     if (!trimEmail || !trimPass) {
       setError('Completá el email y la contraseña.');
       return;
     }
-    if (mode === 'signup' && !trimName) {
-      setError('Ingresá tu nombre.');
-      return;
+
+    if (mode === 'signup') {
+      if (!trimName) {
+        setError('Ingresá tu nombre.');
+        return;
+      }
+      if (!allReqsMet) {
+        setError('La contraseña no cumple todos los requisitos de seguridad.');
+        return;
+      }
+      if (trimPass !== confirmPassword) {
+        setError('Las contraseñas no coinciden.');
+        return;
+      }
     }
+
     setError(null);
     setLoading(true);
     try {
@@ -71,16 +135,12 @@ export default function LoginScreen() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '';
       if (mode === 'signin') {
-        if (msg.includes('invalid-email')) {
-          setError('El email no es válido.');
-        } else {
-          setError('Email o contraseña incorrectos.');
-        }
+        setError(msg.includes('invalid-email')
+          ? 'El email no es válido.'
+          : 'Email o contraseña incorrectos.');
       } else {
         if (msg.includes('email-already-in-use')) {
           setError('Ya existe una cuenta con ese email. Iniciá sesión.');
-        } else if (msg.includes('weak-password')) {
-          setError('La contraseña debe tener al menos 6 caracteres.');
         } else if (msg.includes('invalid-email')) {
           setError('El email no es válido.');
         } else {
@@ -96,9 +156,23 @@ export default function LoginScreen() {
     setMode('home');
     setEmail('');
     setPassword('');
+    setConfirmPassword('');
     setName('');
+    setShowPass(false);
+    setShowConfirmPass(false);
     setError(null);
   };
+
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setPassword('');
+    setConfirmPassword('');
+    setError(null);
+    setShowPass(false);
+    setShowConfirmPass(false);
+  };
+
+  // ── JSX ─────────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.container}>
@@ -112,6 +186,7 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* Logo */}
           <Animated.View entering={FadeInUp.delay(100).duration(600)} style={styles.logoArea}>
             <View style={styles.iconCircle}>
               <Dumbbell size={32} color={twColors.primary} />
@@ -120,6 +195,7 @@ export default function LoginScreen() {
             <Text style={styles.tagline}>Tu compañero de gym</Text>
           </Animated.View>
 
+          {/* Modo home */}
           {mode === 'home' && (
             <>
               <Animated.View entering={FadeInUp.delay(200).duration(600)} style={styles.headlineArea}>
@@ -177,18 +253,20 @@ export default function LoginScreen() {
             </>
           )}
 
+          {/* Modo signin / signup */}
           {(mode === 'signin' || mode === 'signup') && (
             <Animated.View entering={FadeInUp.delay(100).duration(400)} style={styles.formArea}>
               <Text style={styles.formTitle}>
                 {mode === 'signin' ? 'Iniciá sesión' : 'Creá tu cuenta'}
               </Text>
 
+              {/* Nombre (solo signup) */}
               {mode === 'signup' && (
                 <View style={styles.inputWrap}>
-                  <Text style={styles.inputLabel}>Tu nombre</Text>
+                  <Text style={styles.inputLabel}>Nombre</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Jose Ivorra"
+                    placeholder="Tu nombre"
                     placeholderTextColor={twColors.muted}
                     value={name}
                     onChangeText={(v) => { setName(v); clearError(); }}
@@ -198,6 +276,7 @@ export default function LoginScreen() {
                 </View>
               )}
 
+              {/* Email */}
               <View style={styles.inputWrap}>
                 <Text style={styles.inputLabel}>Email</Text>
                 <TextInput
@@ -212,12 +291,15 @@ export default function LoginScreen() {
                 />
               </View>
 
+              {/* Contraseña */}
               <View style={styles.inputWrap}>
-                <Text style={styles.inputLabel}>Contraseña</Text>
+                <Text style={styles.inputLabel}>
+                  {mode === 'signup' ? 'Contraseña segura' : 'Contraseña'}
+                </Text>
                 <View style={styles.passwordRow}>
                   <TextInput
-                    style={[styles.input, { flex: 1, borderRightWidth: 0, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}
-                    placeholder="Mínimo 6 caracteres"
+                    style={[styles.input, styles.passwordInput]}
+                    placeholder={mode === 'signup' ? 'Mínimo 12 caracteres' : 'Tu contraseña'}
                     placeholderTextColor={twColors.muted}
                     value={password}
                     onChangeText={(v) => { setPassword(v); clearError(); }}
@@ -225,24 +307,85 @@ export default function LoginScreen() {
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
-                  <Pressable
-                    style={styles.eyeBtn}
-                    onPress={() => setShowPass((v) => !v)}
-                  >
+                  <Pressable style={styles.eyeBtn} onPress={() => setShowPass((v) => !v)}>
                     {showPass
                       ? <EyeOff size={18} color={twColors.muted} />
-                      : <Eye size={18} color={twColors.muted} />
-                    }
+                      : <Eye size={18} color={twColors.muted} />}
                   </Pressable>
                 </View>
+
+                {/* Barra de fuerza + requisitos (solo signup) */}
+                {mode === 'signup' && password.length > 0 && (
+                  <View style={styles.strengthWrap}>
+                    {/* Barra */}
+                    <View style={styles.strengthBarBg}>
+                      <View
+                        style={[
+                          styles.strengthBarFill,
+                          {
+                            width: `${(score / PASSWORD_REQS.length) * 100}%` as any,
+                            backgroundColor: strength.color,
+                          },
+                        ]}
+                      />
+                    </View>
+                    <Text style={[styles.strengthLabel, { color: strength.color }]}>
+                      {strength.label}
+                    </Text>
+
+                    {/* Checklist */}
+                    <View style={styles.reqList}>
+                      {PASSWORD_REQS.map((r) => (
+                        <ReqRow key={r.key} met={r.test(password)} label={r.label} />
+                      ))}
+                    </View>
+                  </View>
+                )}
               </View>
 
+              {/* Confirmar contraseña (solo signup) */}
+              {mode === 'signup' && (
+                <View style={styles.inputWrap}>
+                  <Text style={styles.inputLabel}>Confirmar contraseña</Text>
+                  <View style={styles.passwordRow}>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        styles.passwordInput,
+                        confirmMismatch && styles.inputError,
+                        confirmMatches && styles.inputSuccess,
+                      ]}
+                      placeholder="Repetí tu contraseña"
+                      placeholderTextColor={twColors.muted}
+                      value={confirmPassword}
+                      onChangeText={(v) => { setConfirmPassword(v); clearError(); }}
+                      secureTextEntry={!showConfirmPass}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                    <Pressable style={styles.eyeBtn} onPress={() => setShowConfirmPass((v) => !v)}>
+                      {showConfirmPass
+                        ? <EyeOff size={18} color={twColors.muted} />
+                        : <Eye size={18} color={twColors.muted} />}
+                    </Pressable>
+                  </View>
+                  {confirmMatches && (
+                    <Text style={styles.matchText}>✓ Las contraseñas coinciden</Text>
+                  )}
+                  {confirmMismatch && (
+                    <Text style={styles.mismatchText}>Las contraseñas no coinciden</Text>
+                  )}
+                </View>
+              )}
+
+              {/* Error global */}
               {error ? (
                 <View style={styles.errorBox}>
                   <Text style={styles.errorText}>{error}</Text>
                 </View>
               ) : null}
 
+              {/* Botón submit */}
               <Pressable
                 style={[styles.authButton, styles.submitButton, loading && styles.pressed]}
                 onPress={handleEmailSubmit}
@@ -260,7 +403,7 @@ export default function LoginScreen() {
                 <Text style={styles.switchText}>
                   {mode === 'signin' ? '¿No tenés cuenta? ' : '¿Ya tenés cuenta? '}
                 </Text>
-                <Pressable onPress={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
+                <Pressable onPress={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}>
                   <Text style={styles.switchLink}>
                     {mode === 'signin' ? 'Registrate' : 'Iniciá sesión'}
                   </Text>
@@ -279,10 +422,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: twColors.background,
-  },
+  container: { flex: 1, backgroundColor: twColors.background },
   scroll: {
     flexGrow: 1,
     paddingHorizontal: 24,
@@ -290,11 +430,9 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     gap: 20,
   },
-  logoArea: {
-    alignItems: 'center',
-    gap: 10,
-    paddingTop: 20,
-  },
+
+  // Logo
+  logoArea: { alignItems: 'center', gap: 10, paddingTop: 20 },
   iconCircle: {
     width: 72,
     height: 72,
@@ -305,35 +443,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  appName: {
-    fontSize: 36,
-    fontFamily: twFonts.bold,
-    color: twColors.primary,
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    fontSize: 14,
-    fontFamily: twFonts.regular,
-    color: twColors.muted,
-  },
-  headlineArea: {
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 8,
-  },
-  headline: {
-    fontSize: 32,
-    fontFamily: twFonts.bold,
-    color: twColors.foreground,
-    textAlign: 'center',
-  },
-  subheadline: {
-    fontSize: 14,
-    fontFamily: twFonts.regular,
-    color: twColors.muted,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
+  appName: { fontSize: 36, fontFamily: twFonts.bold, color: twColors.primary, letterSpacing: -0.5 },
+  tagline: { fontSize: 14, fontFamily: twFonts.regular, color: twColors.muted },
+
+  // Home
+  headlineArea: { alignItems: 'center', gap: 8, paddingHorizontal: 8 },
+  headline: { fontSize: 32, fontFamily: twFonts.bold, color: twColors.foreground, textAlign: 'center' },
+  subheadline: { fontSize: 14, fontFamily: twFonts.regular, color: twColors.muted, textAlign: 'center', lineHeight: 22 },
   buttonsArea: { gap: 12 },
   pressed: { opacity: 0.75 },
   authButton: {
@@ -359,11 +475,12 @@ const styles = StyleSheet.create({
   footerLink: { color: twColors.primary, fontFamily: twFonts.medium },
   termsText: { fontSize: 11, fontFamily: twFonts.regular, color: twColors.muted, textAlign: 'center', lineHeight: 16 },
   termsLink: { color: twColors.muted, textDecorationLine: 'underline' },
-  // Form
+
+  // Formulario
   formArea: { gap: 16, paddingTop: 8 },
   formTitle: { fontSize: 26, fontFamily: twFonts.bold, color: twColors.foreground },
   inputWrap: { gap: 6 },
-  inputLabel: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.mutedForeground },
+  inputLabel: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.muted },
   input: {
     backgroundColor: twColors.card,
     borderWidth: 1,
@@ -375,7 +492,15 @@ const styles = StyleSheet.create({
     fontFamily: twFonts.regular,
     color: twColors.foreground,
   },
+  inputError: { borderColor: twColors.destructive },
+  inputSuccess: { borderColor: '#22c55e' },
   passwordRow: { flexDirection: 'row', alignItems: 'stretch' },
+  passwordInput: {
+    flex: 1,
+    borderRightWidth: 0,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+  },
   eyeBtn: {
     backgroundColor: twColors.card,
     borderWidth: 1,
@@ -385,11 +510,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     justifyContent: 'center',
   },
-  switchRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  switchText: { fontSize: 14, fontFamily: twFonts.regular, color: twColors.muted },
-  switchLink: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.primary },
-  backBtn: { alignSelf: 'center', paddingVertical: 8 },
-  backBtnText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.muted },
+
+  // Fuerza de contraseña
+  strengthWrap: { gap: 8, marginTop: 4 },
+  strengthBarBg: {
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: twColors.border,
+    overflow: 'hidden',
+  },
+  strengthBarFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  strengthLabel: { fontSize: 11, fontFamily: twFonts.bold, textAlign: 'right' },
+  reqList: { gap: 4 },
+  reqRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  reqDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: twColors.border,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reqDotMet: { backgroundColor: '#22c55e', borderColor: '#22c55e' },
+  reqText: { fontSize: 12, fontFamily: twFonts.regular, color: twColors.muted },
+  reqTextMet: { color: twColors.foreground },
+
+  // Confirmar contraseña
+  matchText: { fontSize: 12, fontFamily: twFonts.medium, color: '#22c55e' },
+  mismatchText: { fontSize: 12, fontFamily: twFonts.medium, color: twColors.destructive },
+
+  // Errores y navegación
   errorBox: {
     backgroundColor: twColors.destructive + '18',
     borderWidth: 1,
@@ -399,4 +554,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   errorText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.destructive, textAlign: 'center' },
+  switchRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  switchText: { fontSize: 14, fontFamily: twFonts.regular, color: twColors.muted },
+  switchLink: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.primary },
+  backBtn: { alignSelf: 'center', paddingVertical: 8 },
+  backBtnText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.muted },
 });
