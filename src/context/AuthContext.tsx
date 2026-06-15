@@ -17,6 +17,7 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUser: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -89,8 +90,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fbSignOut(auth);
   };
 
+  const refreshUser = () => {
+    const fbUser = auth.currentUser;
+    if (fbUser) {
+      const name = fbUser.displayName ?? fbUser.email?.split('@')[0] ?? 'Usuario';
+      setUser({ uid: fbUser.uid, email: fbUser.email ?? '', name });
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

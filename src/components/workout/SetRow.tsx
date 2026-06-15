@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react-native';
+import { Check, Minus } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CompletedSet } from '@/types';
 import {
@@ -16,6 +16,7 @@ interface Props {
   onChange: (data: Partial<CompletedSet>) => void;
   onComplete: () => void;
   onTimerStart: () => void;
+  onRemove?: () => void;
 }
 
 export default function SetRow({
@@ -26,6 +27,7 @@ export default function SetRow({
   onChange,
   onComplete,
   onTimerStart,
+  onRemove,
 }: Props) {
   const handleComplete = () => {
     onComplete();
@@ -74,6 +76,12 @@ export default function SetRow({
       >
         <Check size={14} color={set.completed ? twColors.background : twColors.muted} />
       </Pressable>
+
+      {onRemove && (
+        <Pressable style={styles.removeBtn} onPress={onRemove}>
+          <Minus size={12} color={twColors.muted} />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -125,5 +133,15 @@ const styles = StyleSheet.create({
   checkBtnDone: {
     backgroundColor: twColors.primary,
     borderColor: twColors.primary,
+  },
+  removeBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.card2,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

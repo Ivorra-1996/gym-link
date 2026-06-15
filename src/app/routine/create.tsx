@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft,
-  GripVertical,
+  ChevronDown,
+  ChevronUp,
   Minus,
   Plus,
   Trash2,
@@ -78,6 +79,16 @@ export default function CreateRoutine() {
 
   const removeExercise = (index: number) => {
     setExercises((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const moveExercise = (index: number, dir: -1 | 1) => {
+    const next = index + dir;
+    if (next < 0 || next >= exercises.length) return;
+    setExercises((prev) => {
+      const arr = [...prev];
+      [arr[index], arr[next]] = [arr[next], arr[index]];
+      return arr;
+    });
   };
 
   const handleSave = async () => {
@@ -199,7 +210,22 @@ export default function CreateRoutine() {
               {exercises.map((ex, i) => (
                 <View key={`${ex.libraryId}_${i}`} style={styles.exerciseCard}>
                   <View style={styles.exerciseCardHeader}>
-                    <GripVertical size={16} color={twColors.muted} />
+                    <View style={styles.reorderBtns}>
+                      <Pressable
+                        onPress={() => moveExercise(i, -1)}
+                        disabled={i === 0}
+                        style={[styles.reorderBtn, i === 0 && { opacity: 0.25 }]}
+                      >
+                        <ChevronUp size={13} color={twColors.muted} />
+                      </Pressable>
+                      <Pressable
+                        onPress={() => moveExercise(i, 1)}
+                        disabled={i === exercises.length - 1}
+                        style={[styles.reorderBtn, i === exercises.length - 1 && { opacity: 0.25 }]}
+                      >
+                        <ChevronDown size={13} color={twColors.muted} />
+                      </Pressable>
+                    </View>
                     <Text style={styles.exerciseName}>{ex.name}</Text>
                     <Pressable onPress={() => removeExercise(i)}>
                       <Minus size={16} color={twColors.destructive} />
@@ -350,6 +376,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  reorderBtns: { gap: 1 },
+  reorderBtn: { padding: 2 },
   exerciseName: {
     flex: 1,
     fontSize: 14,

@@ -1,10 +1,12 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { Href, router } from 'expo-router';
+import { doc, getDoc } from 'firebase/firestore';
 import {
   Calendar,
   ChevronRight,
   Flame,
   LogOut,
+  Pencil,
   Settings,
   TrendingUp,
   Trophy,
@@ -15,6 +17,7 @@ import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
+import { auth, db } from '@/services/firebase';
 import { getSessions } from '@/services/storage';
 import { calculateStreak } from '@/utils/workout';
 import {
@@ -47,6 +50,8 @@ const Profile = () => {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [totalSessions, setTotalSessions] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [handle, setHandle] = useState('');
+  const [ciudad, setCiudad] = useState('');
   const { user, signOut } = useAuth();
 
   useFocusEffect(
@@ -55,6 +60,16 @@ const Profile = () => {
         setTotalSessions(sessions.length);
         setStreak(calculateStreak(sessions));
       });
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        getDoc(doc(db, 'users', uid)).then((snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            setHandle(data.handle ?? '');
+            setCiudad(data.ciudad ?? '');
+          }
+        });
+      }
     }, [])
   );
 
@@ -92,12 +107,21 @@ const Profile = () => {
               <View style={styles.avatarCircle}>
                 <User size={24} color={twColors.primary} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.profileName}>{user?.name ?? 'Usuario'}</Text>
                 <Text style={styles.profileSub}>
-                  @jose_fit · Argentina, Morón
+                  {handle ? `@${handle}` : ''}
+                  {handle && ciudad ? ' · ' : ''}
+                  {ciudad}
+                  {!handle && !ciudad ? 'Completá tu perfil →' : ''}
                 </Text>
               </View>
+              <Pressable
+                style={styles.editBtn}
+                onPress={() => router.push('/profile/edit' as Href)}
+              >
+                <Pencil size={14} color={twColors.primary} />
+              </Pressable>
             </View>
 
             <View style={styles.statsRow}>
@@ -206,6 +230,16 @@ const styles = StyleSheet.create({
   },
   profileName: { fontSize: 17, fontFamily: twFonts.bold, color: twColors.foreground },
   profileSub: { fontSize: 11, fontFamily: twFonts.regular, color: twColors.muted, marginTop: 2 },
+  editBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 999,
+    backgroundColor: twColors.primary + '20',
+    borderWidth: borderWidth.default,
+    borderColor: twColors.primary + '40',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   statsRow: { flexDirection: 'row', justifyContent: 'space-around', borderTopWidth: borderWidth.default, borderTopColor: 'transparent' },
   statItem: { alignItems: 'center' },
   statValue: { fontSize: 18, fontFamily: twFonts.bold, color: twColors.foreground },

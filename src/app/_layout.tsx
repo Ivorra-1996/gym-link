@@ -13,7 +13,6 @@ import "../global.css";
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { WorkoutProvider } from "@/context/WorkoutContext";
-import { seedDefaultRoutinesIfEmpty } from "@/services/storage";
 import {
   DarkTheme,
   DefaultTheme,
@@ -44,8 +43,6 @@ function InitialLayout() {
       router.replace("/login" as never);
     } else if (user && onLoginScreen) {
       router.replace("/" as never);
-    } else if (user) {
-      seedDefaultRoutinesIfEmpty();
     }
   }, [user, pathname, fontsLoaded, authLoading]);
 
@@ -67,6 +64,7 @@ function InitialLayout() {
         <Stack.Screen name="history/[sessionId]" />
         <Stack.Screen name="tools/calculator" />
         <Stack.Screen name="tools/bodyweight" />
+        <Stack.Screen name="profile/edit" />
       </Stack>
     </ThemeProvider>
   );

@@ -35,6 +35,7 @@ export default function ActiveWorkout() {
     session,
     updateSet,
     addSet,
+    removeSet,
     setCurrentExercise,
     startRestTimer,
     stopRestTimer,
@@ -239,6 +240,7 @@ export default function ActiveWorkout() {
           onCompleteSet={(si) => updateSet(session.currentExerciseIndex, si, { completed: true })}
           onAddSet={() => addSet(session.currentExerciseIndex)}
           onStartTimer={() => startRestTimer(session.restDurationSeconds)}
+          onRemoveSet={(si) => removeSet(session.currentExerciseIndex, si)}
         />
 
         {/* Navigation */}

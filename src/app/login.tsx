@@ -1,5 +1,11 @@
 import { useAuth } from '@/context/AuthContext';
+import { auth } from '@/services/firebase';
 import { twColors, twFonts, twRadius } from '@/constants/tailwind-runtime-theme';
+import {
+  GoogleAuthProvider,
+  OAuthProvider,
+  signInWithPopup,
+} from 'firebase/auth';
 import { Dumbbell, Eye, EyeOff, Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
@@ -28,6 +34,52 @@ export default function LoginScreen() {
   const [name, setName] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    if (Platform.OS !== 'web') {
+      Alert.alert(
+        'Google Sign-In',
+        'En dispositivos nativos necesitás configurar las credenciales OAuth. Por ahora usá email o iniciá desde el navegador.'
+      );
+      return;
+    }
+    setLoading(true);
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code ?? '';
+      if (code === 'auth/operation-not-allowed') {
+        Alert.alert('No habilitado', 'Activá Google en Firebase Console → Authentication → Sign-in methods.');
+      } else if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+        Alert.alert('Error', 'No se pudo iniciar sesión con Google.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    if (Platform.OS !== 'web') {
+      Alert.alert(
+        'Apple Sign-In',
+        'Apple Sign-In en dispositivos nativos requiere un dev build y cuenta de Apple Developer.'
+      );
+      return;
+    }
+    setLoading(true);
+    try {
+      await signInWithPopup(auth, new OAuthProvider('apple.com'));
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code ?? '';
+      if (code === 'auth/operation-not-allowed') {
+        Alert.alert('No habilitado', 'Activá Apple en Firebase Console → Authentication → Sign-in methods.');
+      } else if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+        Alert.alert('Error', 'No se pudo iniciar sesión con Apple.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEmailSubmit = async () => {
     const trimEmail = email.trim();
@@ -107,7 +159,8 @@ export default function LoginScreen() {
               <Animated.View entering={FadeInDown.delay(300).duration(600)} style={styles.buttonsArea}>
                 <Pressable
                   style={({ pressed }) => [styles.authButton, styles.googleButton, pressed && styles.pressed]}
-                  onPress={() => Alert.alert('Google', 'Próximamente.')}
+                  onPress={handleGoogleSignIn}
+                  disabled={loading}
                 >
                   <Text style={styles.googleG}>G</Text>
                   <Text style={styles.authButtonTextDark}>Continuar con Google</Text>
@@ -115,7 +168,8 @@ export default function LoginScreen() {
 
                 <Pressable
                   style={({ pressed }) => [styles.authButton, styles.appleButton, pressed && styles.pressed]}
-                  onPress={() => Alert.alert('Apple', 'Próximamente.')}
+                  onPress={handleAppleSignIn}
+                  disabled={loading}
                 >
                   <Text style={styles.appleIcon}></Text>
                   <Text style={styles.authButtonTextWhite}>Continuar con Apple</Text>

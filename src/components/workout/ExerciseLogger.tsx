@@ -17,6 +17,7 @@ interface Props {
   onCompleteSet: (setIndex: number) => void;
   onAddSet: () => void;
   onStartTimer: () => void;
+  onRemoveSet?: (setIndex: number) => void;
 }
 
 export default function ExerciseLogger({
@@ -27,6 +28,7 @@ export default function ExerciseLogger({
   onCompleteSet,
   onAddSet,
   onStartTimer,
+  onRemoveSet,
 }: Props) {
   const completedCount = exercise.sets.filter((s) => s.completed).length;
 
@@ -45,6 +47,9 @@ export default function ExerciseLogger({
         <Text style={[styles.colLabel, { flex: 1 }]}>Peso</Text>
         <Text style={[styles.colLabel, { flex: 1 }]}>Reps</Text>
         <Text style={[styles.colLabel, { width: 34 }]}></Text>
+        {onRemoveSet && exercise.sets.length > 1 && (
+          <Text style={[styles.colLabel, { width: 26 }]}></Text>
+        )}
       </View>
 
       {exercise.sets.map((set, si) => {
@@ -59,6 +64,7 @@ export default function ExerciseLogger({
             onChange={(data) => onUpdateSet(si, data)}
             onComplete={() => onCompleteSet(si)}
             onTimerStart={onStartTimer}
+            onRemove={onRemoveSet && exercise.sets.length > 1 ? () => onRemoveSet(si) : undefined}
           />
         );
       })}
