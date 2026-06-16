@@ -23,12 +23,20 @@ import {
 } from '@/constants/tailwind-runtime-theme';
 
 type Range = 'all' | '7d' | '1m' | '3m';
+type Sort  = 'date_desc' | 'date_asc' | 'volume' | 'duration';
 
 const RANGES: { key: Range; label: string }[] = [
   { key: 'all', label: 'Todo' },
   { key: '7d',  label: '7 días' },
   { key: '1m',  label: 'Mes' },
   { key: '3m',  label: '3 meses' },
+];
+
+const SORTS: { key: Sort; label: string }[] = [
+  { key: 'date_desc', label: 'Reciente' },
+  { key: 'date_asc',  label: 'Antiguo' },
+  { key: 'volume',    label: 'Volumen' },
+  { key: 'duration',  label: 'Duración' },
 ];
 
 const RANGE_MS: Record<Exclude<Range, 'all'>, number> = {
@@ -50,6 +58,7 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [range, setRange] = useState<Range>('all');
+  const [sort, setSort]   = useState<Sort>('date_desc');
 
   useFocusEffect(
     useCallback(() => {
@@ -63,7 +72,7 @@ export default function HistoryScreen() {
   const filtered = useMemo(() => {
     const now = Date.now();
     const q = query.trim().toLowerCase();
-    return sessions.filter((s) => {
+    const result = sessions.filter((s) => {
       if (range !== 'all' && now - s.startedAt > RANGE_MS[range]) return false;
       if (q) {
         const matchesRoutine = s.routineName.toLowerCase().includes(q);
@@ -72,7 +81,14 @@ export default function HistoryScreen() {
       }
       return true;
     });
-  }, [sessions, query, range]);
+    switch (sort) {
+      case 'date_asc': result.sort((a, b) => a.startedAt - b.startedAt); break;
+      case 'volume':   result.sort((a, b) => b.totalVolume - a.totalVolume); break;
+      case 'duration': result.sort((a, b) => b.durationSeconds - a.durationSeconds); break;
+      default:         result.sort((a, b) => b.startedAt - a.startedAt); break;
+    }
+    return result;
+  }, [sessions, query, range, sort]);
 
   const isFiltering = query.trim() !== '' || range !== 'all';
 
@@ -126,6 +142,24 @@ export default function HistoryScreen() {
                 </Text>
               </Pressable>
             ))}
+          </View>
+
+          {/* Chips de orden */}
+          <View style={styles.sortRow}>
+            <Text style={styles.sortLabel}>Orden</Text>
+            <View style={styles.sortChips}>
+              {SORTS.map(({ key, label }) => (
+                <Pressable
+                  key={key}
+                  onPress={() => setSort(key)}
+                  style={[styles.sortChip, sort === key && styles.sortChipActive]}
+                >
+                  <Text style={[styles.sortChipText, sort === key && styles.sortChipTextActive]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
 
           {/* Contador de resultados cuando hay filtro activo */}
@@ -261,6 +295,22 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.muted },
   chipTextActive: { color: twColors.background },
+
+  // Sort
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sortLabel: { fontSize: 11, fontFamily: twFonts.medium, color: twColors.muted, flexShrink: 0 },
+  sortChips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  sortChip: {
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.card2,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+  },
+  sortChipActive: { backgroundColor: twColors.card, borderColor: twColors.primary },
+  sortChipText: { fontSize: 11, fontFamily: twFonts.medium, color: twColors.muted },
+  sortChipTextActive: { color: twColors.primary },
 
   // Contador
   resultCount: {
