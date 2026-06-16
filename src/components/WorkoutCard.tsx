@@ -1,5 +1,5 @@
 import { Href, router } from "expo-router";
-import { ChevronRight, Clock, Flame } from "lucide-react-native";
+import { ChevronRight } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
@@ -14,8 +14,6 @@ interface WorkoutCardProps {
   id: string;
   title: string;
   muscleGroup: string;
-  duration: string;
-  calories: string;
   exercises: number;
   days?: number[];
 }
@@ -28,8 +26,6 @@ const WorkoutCard = ({
   id,
   title,
   muscleGroup,
-  duration,
-  calories,
   exercises,
   days,
 }: WorkoutCardProps) => {
@@ -56,16 +52,6 @@ const WorkoutCard = ({
           <Text style={styles.title}>{title}</Text>
 
           <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <Clock size={12} color={twColors.muted} />
-              <Text style={styles.metaText}>{duration}</Text>
-            </View>
-
-            <View style={styles.metaItem}>
-              <Flame size={12} color={twColors.muted} />
-              <Text style={styles.metaText}>{calories}</Text>
-            </View>
-
             <Text style={styles.metaText}>{exercises} ejercicios</Text>
           </View>
 

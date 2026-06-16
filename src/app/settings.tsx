@@ -16,15 +16,12 @@ import {
   Droplets,
   LogOut,
   Mail,
-  MapPin,
   Shield,
   Trash2,
-  Users,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -33,6 +30,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { useAuth } from '@/context/AuthContext';
 import { auth, db } from '@/services/firebase';
 import {
@@ -57,60 +55,6 @@ const DEFAULT: SettingsData = {
 };
 
 type ActiveModal = 'signout' | 'password' | 'delete' | null;
-
-// ── ConfirmModal ───────────────────────────────────────────────────────────────
-
-function ConfirmModal({
-  visible,
-  title,
-  message,
-  confirmLabel,
-  destructive = false,
-  loading = false,
-  error = null,
-  onConfirm,
-  onCancel,
-}: {
-  visible: boolean;
-  title: string;
-  message: string;
-  confirmLabel: string;
-  destructive?: boolean;
-  loading?: boolean;
-  error?: string | null;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <Modal transparent visible={visible} animationType="fade" onRequestClose={onCancel}>
-      <View style={mStyles.overlay}>
-        <View style={mStyles.card}>
-          <Text style={mStyles.title}>{title}</Text>
-          <Text style={mStyles.message}>{message}</Text>
-          {error ? <Text style={mStyles.error}>{error}</Text> : null}
-          <View style={mStyles.btnRow}>
-            <Pressable style={mStyles.cancelBtn} onPress={onCancel} disabled={loading}>
-              <Text style={mStyles.cancelText}>Cancelar</Text>
-            </Pressable>
-            <Pressable
-              style={[mStyles.confirmBtn, destructive && mStyles.destructiveBtn, loading && mStyles.btnDisabled]}
-              onPress={onConfirm}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color={destructive ? '#fff' : twColors.background} />
-              ) : (
-                <Text style={[mStyles.confirmText, destructive && mStyles.destructiveText]}>
-                  {confirmLabel}
-                </Text>
-              )}
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
 
 // ── Main screen ────────────────────────────────────────────────────────────────
 
@@ -307,7 +251,7 @@ export default function SettingsScreen() {
           )}
         </Section>
 
-        {/* Privacidad */}
+        {/* Privacidad — deshabilitado temporalmente (funcionalidad de mapa/match pendiente)
         <Section title="Privacidad">
           <ToggleRow
             label="Visible en el mapa"
@@ -326,6 +270,7 @@ export default function SettingsScreen() {
             onValueChange={(v) => toggle('buscarMatches', v)}
           />
         </Section>
+        */}
 
         {/* Notificaciones — solo nativo */}
         {Platform.OS !== 'web' && (
@@ -370,8 +315,8 @@ export default function SettingsScreen() {
 
       {/* Toast */}
       {toast ? (
-        <View style={mStyles.toast}>
-          <Text style={mStyles.toastText}>{toast}</Text>
+        <View style={styles.toast}>
+          <Text style={styles.toastText}>{toast}</Text>
         </View>
       ) : null}
 
@@ -546,65 +491,6 @@ function IntervalRow({
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const mStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  card: {
-    width: '100%',
-    maxWidth: 380,
-    backgroundColor: twColors.card,
-    borderRadius: twRadius.sm,
-    borderWidth: borderWidth.default,
-    borderColor: twColors.border,
-    padding: 24,
-    gap: 12,
-  },
-  title: { fontSize: 16, fontFamily: twFonts.bold, color: twColors.foreground },
-  message: { fontSize: 13, fontFamily: twFonts.regular, color: twColors.muted, lineHeight: 20 },
-  error: { fontSize: 12, fontFamily: twFonts.medium, color: twColors.destructive },
-  btnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: twRadius.sm,
-    backgroundColor: twColors.card2,
-    borderWidth: borderWidth.default,
-    borderColor: twColors.border,
-    alignItems: 'center',
-  },
-  cancelText: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.muted },
-  confirmBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: twRadius.sm,
-    backgroundColor: twColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmText: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.background },
-  destructiveBtn: { backgroundColor: twColors.destructive },
-  destructiveText: { color: '#fff' },
-  btnDisabled: { opacity: 0.7 },
-  toast: {
-    position: 'absolute',
-    bottom: 24,
-    left: 16,
-    right: 16,
-    backgroundColor: twColors.card,
-    borderWidth: borderWidth.default,
-    borderColor: twColors.primary,
-    borderRadius: twRadius.sm,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  toastText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.foreground },
-});
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: twColors.background },
   scroll: { flex: 1 },
@@ -668,4 +554,17 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.muted },
   chipTextActive: { color: twColors.background },
+  toast: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    right: 16,
+    backgroundColor: twColors.card,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.primary,
+    borderRadius: twRadius.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  toastText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.foreground },
 });

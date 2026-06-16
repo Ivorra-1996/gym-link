@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   pillActive: { backgroundColor: twColors.primary, borderColor: twColors.primary },
-  pillText: { fontSize: 12, fontFamily: twFonts.medium, color: twColors.mutedForeground },
+  pillText: { fontSize: 12, fontFamily: twFonts.medium, color: twColors.muted },
   pillTextActive: { color: twColors.background },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   cardWrapper: { width: '48%' },

@@ -16,6 +16,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import ExerciseLogger from '@/components/workout/ExerciseLogger';
 import RestTimer from '@/components/workout/RestTimer';
 import { useWorkout } from '@/context/WorkoutContext';
@@ -59,6 +60,7 @@ export default function ActiveWorkout() {
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -81,10 +83,11 @@ export default function ActiveWorkout() {
     });
   }, [session?.routineId]);
 
-  if (!session) {
-    router.replace('/' as never);
-    return null;
-  }
+  useEffect(() => {
+    if (!session) router.replace('/' as never);
+  }, [session]);
+
+  if (!session) return null;
 
   const currentEx = session.exercises[session.currentExerciseIndex];
 
@@ -131,6 +134,7 @@ export default function ActiveWorkout() {
       }
     } catch {
       setIsSaving(false);
+      setSaveError('No se pudo guardar el entrenamiento. Intentá de nuevo.');
     }
   };
 
@@ -258,9 +262,15 @@ export default function ActiveWorkout() {
           </Pressable>
         </View>
 
+        {saveError ? (
+          <View style={styles.saveErrorBox}>
+            <Text style={styles.saveErrorText}>{saveError}</Text>
+          </View>
+        ) : null}
+
         <Pressable
           style={[styles.finishBtn, isSaving && styles.finishBtnDisabled]}
-          onPress={() => setShowFinishConfirm(true)}
+          onPress={() => { setSaveError(null); setShowFinishConfirm(true); }}
           disabled={isSaving}
         >
           {isSaving ? (
@@ -274,28 +284,24 @@ export default function ActiveWorkout() {
         </Pressable>
       </ScrollView>
 
-      {/* Confirm: finish */}
-      {showFinishConfirm && (
-        <ConfirmModal
-          title="Finalizar entrenamiento"
-          message="¿Seguro que querés terminar la sesión?"
-          confirmLabel="Finalizar"
-          onConfirm={doFinish}
-          onCancel={() => setShowFinishConfirm(false)}
-        />
-      )}
+      <ConfirmModal
+        visible={showFinishConfirm}
+        title="Finalizar entrenamiento"
+        message="¿Seguro que querés terminar la sesión?"
+        confirmLabel="Finalizar"
+        onConfirm={doFinish}
+        onCancel={() => setShowFinishConfirm(false)}
+      />
 
-      {/* Confirm: discard */}
-      {showDiscardConfirm && (
-        <ConfirmModal
-          title="Descartar sesión"
-          message="Se perderá todo el progreso de esta sesión."
-          confirmLabel="Descartar"
-          destructive
-          onConfirm={doDiscard}
-          onCancel={() => setShowDiscardConfirm(false)}
-        />
-      )}
+      <ConfirmModal
+        visible={showDiscardConfirm}
+        title="Descartar sesión"
+        message="Se perderá todo el progreso de esta sesión."
+        confirmLabel="Descartar"
+        destructive
+        onConfirm={doDiscard}
+        onCancel={() => setShowDiscardConfirm(false)}
+      />
 
       {/* PR modal */}
       {prModal && (
@@ -309,62 +315,6 @@ export default function ActiveWorkout() {
         />
       )}
     </View>
-  );
-}
-
-// ── Confirm Modal ────────────────────────────────────────────────────────────
-
-function ConfirmModal({
-  title,
-  message,
-  confirmLabel,
-  destructive,
-  onConfirm,
-  onCancel,
-}: {
-  title: string;
-  message: string;
-  confirmLabel: string;
-  destructive?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  const scale = useSharedValue(0.9);
-  const opacity = useSharedValue(0);
-
-  useEffect(() => {
-    scale.value = withSpring(1, { damping: 18, stiffness: 240 });
-    opacity.value = withTiming(1, { duration: 180 });
-  }, []);
-
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
-
-  return (
-    <Modal transparent visible onRequestClose={onCancel}>
-      <View style={confirmStyles.overlay}>
-        <Animated.View style={[confirmStyles.card, cardStyle]}>
-          <Text style={confirmStyles.title}>{title}</Text>
-          <Text style={confirmStyles.message}>{message}</Text>
-          <View style={confirmStyles.btnRow}>
-            <Pressable style={confirmStyles.cancelBtn} onPress={onCancel}>
-              <Text style={confirmStyles.cancelText}>Cancelar</Text>
-            </Pressable>
-            <Pressable
-              style={[
-                confirmStyles.confirmBtn,
-                destructive ? confirmStyles.confirmBtnDestructive : confirmStyles.confirmBtnPrimary,
-              ]}
-              onPress={onConfirm}
-            >
-              <Text style={confirmStyles.confirmText}>{confirmLabel}</Text>
-            </Pressable>
-          </View>
-        </Animated.View>
-      </View>
-    </Modal>
   );
 }
 
@@ -416,49 +366,6 @@ function PRModal({ prs, onDismiss }: { prs: PR[]; onDismiss: () => void }) {
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
-
-const confirmStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.72)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-  },
-  card: {
-    width: '100%',
-    backgroundColor: twColors.card,
-    borderRadius: 16,
-    borderWidth: borderWidth.default,
-    borderColor: twColors.border,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 20,
-    gap: 8,
-  },
-  title: { fontSize: 17, fontFamily: twFonts.bold, color: twColors.foreground },
-  message: { fontSize: 14, fontFamily: twFonts.regular, color: twColors.muted, lineHeight: 20 },
-  btnRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: twRadius.sm,
-    backgroundColor: twColors.card2,
-    borderWidth: borderWidth.default,
-    borderColor: twColors.border,
-    alignItems: 'center',
-  },
-  cancelText: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.foreground },
-  confirmBtn: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: twRadius.sm,
-    alignItems: 'center',
-  },
-  confirmBtnPrimary: { backgroundColor: twColors.primary },
-  confirmBtnDestructive: { backgroundColor: twColors.destructive },
-  confirmText: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.background },
-});
 
 const prStyles = StyleSheet.create({
   overlay: {
@@ -653,4 +560,14 @@ const styles = StyleSheet.create({
   },
   finishBtnDisabled: { opacity: 0.6 },
   finishBtnText: { fontSize: 15, fontFamily: twFonts.bold, color: twColors.background },
+  saveErrorBox: {
+    marginBottom: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: twRadius.sm,
+    backgroundColor: '#ef444420',
+    borderWidth: borderWidth.default,
+    borderColor: '#ef4444',
+  },
+  saveErrorText: { fontSize: 13, fontFamily: twFonts.medium, color: '#ef4444', textAlign: 'center' },
 });

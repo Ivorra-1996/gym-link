@@ -1,5 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Plus, Target, Trash2, Utensils } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import {
@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import {
   DEFAULT_NUTRITION_GOALS,
   getNutritionGoals,
@@ -23,7 +24,6 @@ import {
   syncNutritionLog,
 } from '@/services/storage';
 import { FoodEntry, NutritionGoals } from '@/types';
-import { goBack } from '@/utils/navigation';
 import { borderWidth, twColors, twFonts, twRadius } from '@/constants/tailwind-runtime-theme';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
@@ -97,6 +97,7 @@ const macroBarStyles = StyleSheet.create({
 const EMPTY_FORM = { name: '', calories: '', protein: '', carbs: '', fat: '' };
 
 export default function NutritionScreen() {
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const [entries, setEntries] = useState<FoodEntry[]>([]);
   const [goals, setGoals] = useState<NutritionGoals>(DEFAULT_NUTRITION_GOALS);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -234,7 +235,7 @@ export default function NutritionScreen() {
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <Pressable style={styles.backBtn} onPress={() => goBack('/profile')}>
+            <Pressable style={styles.backBtn} onPress={() => router.replace(from === 'home' ? '/' : '/profile')}>
               <ArrowLeft size={18} color={twColors.primary} />
             </Pressable>
             <View style={{ flex: 1 }}>
@@ -522,39 +523,18 @@ export default function NutritionScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ── Modal: confirmar eliminación ── */}
-      <Modal
+      <ConfirmModal
         visible={confirmDeleteId !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setConfirmDeleteId(null)}
-      >
-        <View style={styles.confirmOverlay}>
-          <View style={styles.confirmCard}>
-            <Text style={styles.confirmTitle}>¿Eliminar comida?</Text>
-            <Text style={styles.confirmMsg}>
-              {entries.find((e) => e.id === confirmDeleteId)?.name ?? ''}
-            </Text>
-            <View style={styles.confirmBtnRow}>
-              <Pressable
-                style={styles.confirmCancelBtn}
-                onPress={() => setConfirmDeleteId(null)}
-              >
-                <Text style={styles.confirmCancelText}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                style={styles.confirmDeleteBtn}
-                onPress={async () => {
-                  if (confirmDeleteId) await handleDelete(confirmDeleteId);
-                  setConfirmDeleteId(null);
-                }}
-              >
-                <Text style={styles.confirmDeleteText}>Eliminar</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        title="¿Eliminar comida?"
+        message={entries.find((e) => e.id === confirmDeleteId)?.name ?? ''}
+        confirmLabel="Eliminar"
+        destructive
+        onConfirm={async () => {
+          if (confirmDeleteId) await handleDelete(confirmDeleteId);
+          setConfirmDeleteId(null);
+        }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </View>
   );
 }
@@ -757,40 +737,4 @@ const styles = StyleSheet.create({
   },
   modalSubmitText: { fontSize: 15, fontFamily: twFonts.bold, color: twColors.background },
 
-  // Confirm delete modal
-  confirmOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-  },
-  confirmCard: {
-    backgroundColor: twColors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: twColors.border,
-    padding: 24,
-    gap: 8,
-  },
-  confirmTitle: { fontSize: 16, fontFamily: twFonts.bold, color: twColors.foreground },
-  confirmMsg: { fontSize: 13, fontFamily: twFonts.regular, color: twColors.muted, marginBottom: 8 },
-  confirmBtnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  confirmCancelBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: twRadius.sm,
-    backgroundColor: twColors.card2 as string,
-    borderWidth: 1,
-    borderColor: twColors.border,
-    alignItems: 'center',
-  },
-  confirmCancelText: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.muted },
-  confirmDeleteBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: twRadius.sm,
-    backgroundColor: twColors.destructive,
-    alignItems: 'center',
-  },
-  confirmDeleteText: { fontSize: 14, fontFamily: twFonts.bold, color: '#ffffff' },
 });

@@ -121,8 +121,6 @@ const Train = () => {
                     title={r.name}
                     muscleGroup={r.muscleGroup}
                     exercises={r.exercises.length}
-                    duration={`${r.exercises.length * 8} min`}
-                    calories={`${r.exercises.length * 60} kcal`}
                     days={r.days}
                   />
                 </Animated.View>

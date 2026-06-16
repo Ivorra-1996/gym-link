@@ -9,7 +9,6 @@ import {
   TrendingUp,
   Utensils,
   User,
-  Zap,
 } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -168,7 +167,9 @@ const Profile = () => {
                 onHoverIn={() => setHoveredItem(m.label)}
                 onHoverOut={() => setHoveredItem(null)}
                 onPress={() => {
-                  if (m.href) router.push(m.href as Href);
+                  if (!m.href) return;
+                  const dest = m.href === '/nutrition' ? '/nutrition?from=profile' : m.href;
+                  router.push(dest as Href);
                 }}
               >
                 <View style={styles.menuIconWrap}>

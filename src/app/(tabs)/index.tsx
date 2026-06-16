@@ -243,7 +243,7 @@ const Index = () => {
 
           {/* Nutrición */}
           <Animated.View entering={FadeInUp.delay(200)}>
-            <Pressable style={styles.nutritionCard} onPress={() => router.push('/nutrition' as never)}>
+            <Pressable style={styles.nutritionCard} onPress={() => router.push('/nutrition?from=home' as never)}>
               <View style={styles.nutritionLeft}>
                 <View style={styles.nutritionIconCircle}>
                   <Utensils size={16} color={twColors.primary} />

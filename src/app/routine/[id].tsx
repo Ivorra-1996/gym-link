@@ -2,10 +2,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/utils/navigation';
 import { ArrowLeft, Play, SquarePen } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getRoutines } from '@/services/storage';
 import { useWorkout } from '@/context/WorkoutContext';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { Routine, ActiveSessionState, CompletedSet } from '@/types';
 import {
   borderWidth,
@@ -13,48 +14,6 @@ import {
   twFonts,
   twRadius,
 } from '@/constants/tailwind-runtime-theme';
-
-function ConfirmModal({
-  visible,
-  title,
-  message,
-  confirmLabel,
-  destructive = false,
-  onConfirm,
-  onCancel,
-}: {
-  visible: boolean;
-  title: string;
-  message: string;
-  confirmLabel: string;
-  destructive?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <Modal transparent visible={visible} animationType="fade" onRequestClose={onCancel}>
-      <View style={mStyles.overlay}>
-        <View style={mStyles.card}>
-          <Text style={mStyles.title}>{title}</Text>
-          <Text style={mStyles.message}>{message}</Text>
-          <View style={mStyles.btnRow}>
-            <Pressable style={mStyles.cancelBtn} onPress={onCancel}>
-              <Text style={mStyles.cancelText}>Cancelar</Text>
-            </Pressable>
-            <Pressable
-              style={[mStyles.confirmBtn, destructive && mStyles.destructiveBtn]}
-              onPress={onConfirm}
-            >
-              <Text style={[mStyles.confirmText, destructive && mStyles.destructiveText]}>
-                {confirmLabel}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
 
 export default function RoutinePage() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -75,6 +34,7 @@ export default function RoutinePage() {
 
   const handleStart = () => {
     if (!routine) return;
+    if (routine.exercises.length === 0) return;
     if (session) {
       setShowDiscardModal(true);
     } else {
@@ -173,7 +133,7 @@ export default function RoutinePage() {
                     <View style={styles.exerciseMetaItem}>
                       <Text style={styles.exerciseMetaLabel}>Peso</Text>
                       <Text style={styles.exerciseMetaValue}>
-                        {exercise.weight > 0 ? `${exercise.weight} kg` : 'PC'}
+                        {exercise.weight > 0 ? `${exercise.weight} kg` : 'Corporal'}
                       </Text>
                     </View>
                   </View>
@@ -185,10 +145,18 @@ export default function RoutinePage() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.startButton} onPress={handleStart}>
-          <Play size={18} color={twColors.background} />
-          <Text style={styles.startButtonText}>Iniciar Entrenamiento</Text>
-        </Pressable>
+        {routine.exercises.length === 0 ? (
+          <View style={styles.emptyWarning}>
+            <Text style={styles.emptyWarningText}>
+              Agregá al menos un ejercicio para iniciar
+            </Text>
+          </View>
+        ) : (
+          <Pressable style={styles.startButton} onPress={handleStart}>
+            <Play size={18} color={twColors.background} />
+            <Text style={styles.startButtonText}>Iniciar Entrenamiento</Text>
+          </Pressable>
+        )}
       </View>
 
       <ConfirmModal
@@ -204,48 +172,6 @@ export default function RoutinePage() {
   );
 }
 
-const mStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  card: {
-    width: '100%',
-    maxWidth: 380,
-    backgroundColor: twColors.card,
-    borderRadius: twRadius.sm,
-    borderWidth: borderWidth.default,
-    borderColor: twColors.border,
-    padding: 24,
-    gap: 12,
-  },
-  title: { fontSize: 16, fontFamily: twFonts.bold, color: twColors.foreground },
-  message: { fontSize: 13, fontFamily: twFonts.regular, color: twColors.muted, lineHeight: 20 },
-  btnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: twRadius.sm,
-    backgroundColor: twColors.card2,
-    borderWidth: borderWidth.default,
-    borderColor: twColors.border,
-    alignItems: 'center',
-  },
-  cancelText: { fontSize: 14, fontFamily: twFonts.medium, color: twColors.muted },
-  confirmBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: twRadius.sm,
-    backgroundColor: twColors.primary,
-    alignItems: 'center',
-  },
-  confirmText: { fontSize: 14, fontFamily: twFonts.bold, color: twColors.background },
-  destructiveBtn: { backgroundColor: twColors.destructive },
-  destructiveText: { color: '#fff' },
-});
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: twColors.background },
@@ -336,4 +262,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   startButtonText: { fontSize: 16, fontFamily: twFonts.bold, color: twColors.background },
+  emptyWarning: {
+    paddingVertical: 14,
+    borderRadius: twRadius.sm,
+    backgroundColor: twColors.card2 as string,
+    borderWidth: borderWidth.default,
+    borderColor: twColors.border,
+    alignItems: 'center',
+  },
+  emptyWarningText: { fontSize: 13, fontFamily: twFonts.medium, color: twColors.muted },
 });
